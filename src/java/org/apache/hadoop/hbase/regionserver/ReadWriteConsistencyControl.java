@@ -24,7 +24,7 @@ public class ReadWriteConsistencyControl {
       return e;
     }
   }
-  public long completeMemstoreInsert(WriteEntry e) {
+  public void completeMemstoreInsert(WriteEntry e) {
     synchronized (writeQueue) {
       e.markCompleted();
 
@@ -56,8 +56,18 @@ public class ReadWriteConsistencyControl {
       if (nextReadValue > 0) {
         memstoreRead.set(nextReadValue);
       }
-      return nextReadValue;
     }
+
+    // Spin until any other concurrent puts have finished. This makes sure that
+    // if we move on to construct a scanner, we'll get read-your-own-writes
+    // consistency. We anticipate that since puts to the memstore are very fast,
+    // this will be on the order of microseconds - so spinning should be faster
+    // than a condition variable.
+    int spun = 0;
+    while (memstoreRead.get() < e.getWriteNumber()) {
+      spun++;
+    }
+    // Could potentially expose spun as a metric
   }
 
   public long memstoreReadPoint() {

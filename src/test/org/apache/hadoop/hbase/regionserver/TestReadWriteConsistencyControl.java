@@ -33,9 +33,8 @@ public class TestReadWriteConsistencyControl extends TestCase {
             Thread.sleep(0, sleepTime * 1000);
         } catch (InterruptedException e1) {
         }
-        long next = 0;
         try {
-          next = rwcc.completeMemstoreInsert(e);
+          rwcc.completeMemstoreInsert(e);
         } catch (RuntimeException ex) {
           // got failure
           System.out.println(ex.toString());
@@ -44,7 +43,6 @@ public class TestReadWriteConsistencyControl extends TestCase {
           return;
           // Report failure if possible.
         }
-//        System.out.println("finished write: " + next);
       }
     }
   }

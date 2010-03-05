@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.NavigableSet;
 import java.util.TreeSet;
+import java.util.concurrent.atomic.AtomicReference;
 
 import junit.framework.TestCase;
 
@@ -237,6 +238,88 @@ public class TestMemStore extends TestCase {
 
     s = this.memstore.getScanners();
     assertScannerResults(s[0], new KeyValue[]{kv1, kv2});
+  }
+
+  private static class ReadOwnWritesTester extends Thread {
+    final int id;
+    static final int NUM_TRIES = 1000;
+
+    final byte[] row;
+
+    final byte[] f = Bytes.toBytes("family");
+    final byte[] q1 = Bytes.toBytes("q1");
+
+    final ReadWriteConsistencyControl rwcc;
+    final MemStore memstore;
+
+    AtomicReference<Throwable> caughtException;
+
+
+    public ReadOwnWritesTester(int id,
+                               MemStore memstore,
+                               ReadWriteConsistencyControl rwcc,
+                               AtomicReference<Throwable> caughtException)
+    {
+      this.id = id;
+      this.rwcc = rwcc;
+      this.memstore = memstore;
+      this.caughtException = caughtException;
+      row = Bytes.toBytes(id);
+    }
+
+    public void run() {
+      try {
+        internalRun();
+      } catch (Throwable t) {
+        caughtException.compareAndSet(null, t);
+      }
+    }
+
+    private void internalRun() {
+      for (long i = 0; i < NUM_TRIES && caughtException.get() == null; i++) {
+        ReadWriteConsistencyControl.WriteEntry w =
+          rwcc.beginMemstoreInsert();
+
+        // Insert the sequence value (i)
+        byte[] v = Bytes.toBytes(i);
+
+        KeyValue kv = new KeyValue(row, f, q1, i, v);
+        kv.setMemstoreTS(w.getWriteNumber());
+        memstore.add(kv);
+        rwcc.completeMemstoreInsert(w);
+
+        // Assert that we can read back
+
+        KeyValueScanner s = this.memstore.getScanners()[0];
+        s.seek(kv);
+
+        KeyValue ret = s.next();
+        assertNotNull("Didnt find own write at all", ret);
+        assertEquals("Didnt read own writes",
+                     kv.getTimestamp(), ret.getTimestamp());
+      }
+    }
+  }
+
+  public void testReadOwnWritesUnderConcurrency() throws Throwable {
+
+    int NUM_THREADS = 8;
+
+    ReadOwnWritesTester threads[] = new ReadOwnWritesTester[NUM_THREADS];
+    AtomicReference<Throwable> caught = new AtomicReference<Throwable>();
+
+    for (int i = 0; i < NUM_THREADS; i++) {
+      threads[i] = new ReadOwnWritesTester(i, memstore, rwcc, caught);
+      threads[i].start();
+    }
+
+    for (int i = 0; i < NUM_THREADS; i++) {
+      threads[i].join();
+    }
+
+    if (caught.get() != null) {
+      throw caught.get();
+    }
   }
 
   /** 
