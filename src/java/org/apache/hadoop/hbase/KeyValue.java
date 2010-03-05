@@ -200,6 +200,23 @@ public class KeyValue implements Writable, HeapSize {
   private int offset = 0;
   private int length = 0;
 
+  /** Here be dragons **/
+
+  // used to achieve atomic operations in the memstore.
+  public long getMemstoreTS() {
+    return memstoreTS;
+  }
+
+  public void setMemstoreTS(long memstoreTS) {
+    this.memstoreTS = memstoreTS;
+  }
+
+  // default value is 0, aka DNC
+  private long memstoreTS = 0;
+
+  /** Dragon time over, return to normal business */
+
+  
   /** Writable Constructor -- DO NOT USE */
   public KeyValue() {}
 

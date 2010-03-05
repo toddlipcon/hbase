@@ -46,10 +46,14 @@ class StoreScanner implements KeyValueScanner, InternalScanner, ChangedReadersOb
   private boolean cacheBlocks;
 
   // Used to indicate that the scanner has closed (see HBASE-1107)
-  private final AtomicBoolean closing = new AtomicBoolean(false);
+  private boolean closing = false;
 
   /**
    * Opens a scanner across memstore, snapshot, and all StoreFiles.
+   *
+   * @param store who we scan
+   * @param scan the spec
+   * @param columns which columns we are scanning
    */
   StoreScanner(Store store, Scan scan, final NavigableSet<byte[]> columns) {
     this.store = store;
@@ -76,6 +80,9 @@ class StoreScanner implements KeyValueScanner, InternalScanner, ChangedReadersOb
    * Used for major compactions.<p>
    * 
    * Opens a scanner across specified StoreFiles.
+   * @param store who we scan
+   * @param scan the spec
+   * @param scanners ancilliary scanners
    */
   StoreScanner(Store store, Scan scan, KeyValueScanner [] scanners) {
     this.store = store;
@@ -132,7 +139,7 @@ class StoreScanner implements KeyValueScanner, InternalScanner, ChangedReadersOb
   }
 
   public synchronized void close() {
-    this.closing.set(true);
+    this.closing = true;
     // under test, we dont have a this.store
     if (this.store != null)
       this.store.deleteChangedReaderObserver(this);
@@ -145,7 +152,7 @@ class StoreScanner implements KeyValueScanner, InternalScanner, ChangedReadersOb
 
   /**
    * Get the next row of values from this Store.
-   * @param result
+   * @param outResult list of output key values
    * @return true if there are more rows, false if scanner is done
    */
   public synchronized boolean next(List<KeyValue> outResult) throws IOException {
@@ -232,7 +239,7 @@ class StoreScanner implements KeyValueScanner, InternalScanner, ChangedReadersOb
 
   // Implementation of ChangedReadersObserver
   public synchronized void updateReaders() throws IOException {
-    if (this.closing.get()) return;
+    if (this.closing) return;
     KeyValue topKey = this.peek();
     if (topKey == null) return;
     List<KeyValueScanner> scanners = getScanners();

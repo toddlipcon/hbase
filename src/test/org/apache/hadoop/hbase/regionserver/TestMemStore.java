@@ -46,11 +46,13 @@ public class TestMemStore extends TestCase {
   private static final byte [] FAMILY = Bytes.toBytes("column");
   private static final byte [] CONTENTS_BASIC = Bytes.toBytes("contents:basic");
   private static final String CONTENTSTR = "contentstr";
+  private ReadWriteConsistencyControl rwcc;
 
   @Override
   public void setUp() throws Exception {
     super.setUp();
-    this.memstore = new MemStore();
+    this.rwcc = new ReadWriteConsistencyControl();
+    this.memstore = new MemStore(rwcc);
   }
 
   public void testPutSameKey() {
@@ -149,6 +151,94 @@ public class TestMemStore extends TestCase {
     assertEquals(rowCount, count);
   }
 
+  /**
+   * A simple test which verifies the 3 possible states when scanning across snapshot.
+   */
+  public void testScanAcrossSnapshot2() {
+    // we are going to the scanning across snapshot with two kvs
+    // kv1 should always be returned before kv2
+    final byte[] one = Bytes.toBytes(1);
+    final byte[] two = Bytes.toBytes(2);
+    final byte[] f = Bytes.toBytes("f");
+    final byte[] q = Bytes.toBytes("q");
+    final byte[] v = Bytes.toBytes(3);
+
+    final KeyValue kv1 = new KeyValue(one, f, q, v);
+    final KeyValue kv2 = new KeyValue(two, f, q, v);
+
+    // use case 1: both kvs in kvset
+    this.memstore.add(kv1.clone());
+    this.memstore.add(kv2.clone());
+    verifyScanAcrossSnapshot2(kv1, kv2);
+
+    // use case 2: both kvs in snapshot
+    this.memstore.snapshot();
+    verifyScanAcrossSnapshot2(kv1, kv2);
+
+    // use case 3: first in snapshot second in kvset
+    this.memstore = new MemStore(new ReadWriteConsistencyControl());
+    this.memstore.add(kv1.clone());
+    this.memstore.snapshot();
+    this.memstore.add(kv2.clone());
+    verifyScanAcrossSnapshot2(kv1, kv2);
+  }
+
+  private void verifyScanAcrossSnapshot2(KeyValue kv1, KeyValue kv2) {
+    KeyValueScanner[] memstorescanners = this.memstore.getScanners();
+    assertEquals(1, memstorescanners.length);
+    final KeyValueScanner scanner = memstorescanners[0];
+    scanner.seek(KeyValue.createFirstOnRow(HConstants.EMPTY_START_ROW));
+    assertEquals(kv1, scanner.next());
+    assertEquals(kv2, scanner.next());
+    assertNull(scanner.next());
+  }
+
+  private void assertScannerResults(KeyValueScanner scanner, KeyValue[] expected) {
+    scanner.seek(KeyValue.createFirstOnRow(new byte[]{}));
+    for (KeyValue kv : expected) {
+      assertTrue(0 ==
+          KeyValue.COMPARATOR.compare(kv,
+              scanner.next()));
+    }
+    assertNull(scanner.peek());
+  }
+
+  public void testMemstoreConcurrentControl() {
+    final byte[] row = Bytes.toBytes(1);
+    final byte[] f = Bytes.toBytes("family");
+    final byte[] q1 = Bytes.toBytes("q1");
+    final byte[] q2 = Bytes.toBytes("q2");
+    final byte[] v = Bytes.toBytes("value");
+
+    ReadWriteConsistencyControl.WriteEntry w =
+        rwcc.beginMemstoreInsert();
+
+    KeyValue kv1 = new KeyValue(row, f, q1, v);
+    kv1.setMemstoreTS(w.getWriteNumber());
+    memstore.add(kv1);
+
+    KeyValueScanner[] s = this.memstore.getScanners();
+    assertScannerResults(s[0], new KeyValue[]{});
+
+    rwcc.completeMemstoreInsert(w);
+
+    s = this.memstore.getScanners();
+    assertScannerResults(s[0], new KeyValue[]{kv1});
+
+    w = rwcc.beginMemstoreInsert();
+    KeyValue kv2 = new KeyValue(row, f, q2, v);
+    kv2.setMemstoreTS(w.getWriteNumber());
+    memstore.add(kv2);
+
+    s = this.memstore.getScanners();
+    assertScannerResults(s[0], new KeyValue[]{kv1});
+
+    rwcc.completeMemstoreInsert(w);
+
+    s = this.memstore.getScanners();
+    assertScannerResults(s[0], new KeyValue[]{kv1, kv2});
+  }
+
   /** 
    * Test memstore snapshots
    * @throws IOException
@@ -165,7 +255,7 @@ public class TestMemStore extends TestCase {
   }
 
   public void testMultipleVersionsSimple() throws Exception {
-    MemStore m = new MemStore(KeyValue.COMPARATOR);
+    MemStore m = new MemStore(new ReadWriteConsistencyControl(), KeyValue.COMPARATOR);
     byte [] row = Bytes.toBytes("testRow");
     byte [] family = Bytes.toBytes("testFamily");
     byte [] qf = Bytes.toBytes("testQualifier");
@@ -185,7 +275,7 @@ public class TestMemStore extends TestCase {
   }
 
   public void testBinary() throws IOException {
-    MemStore mc = new MemStore(KeyValue.ROOT_COMPARATOR);
+    MemStore mc = new MemStore(new ReadWriteConsistencyControl(), KeyValue.ROOT_COMPARATOR);
     final int start = 43;
     final int end = 46;
     for (int k = start; k <= end; k++) {

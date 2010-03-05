@@ -57,6 +57,7 @@ package org.apache.hadoop.hbase.regionserver;
  import java.util.AbstractList;
  import java.util.ArrayList;
  import java.util.Collection;
+ import java.util.LinkedList;
  import java.util.List;
  import java.util.Map;
  import java.util.NavigableSet;
@@ -149,6 +150,10 @@ public class HRegion implements HConstants, HeapSize { // , Writable{
    */
   private volatile boolean forceMajorCompaction = false;
 
+  public ReadWriteConsistencyControl getRWCC() {
+    return rwcc;
+  }
+
   /*
    * Data structure of write state flags used coordinating flushes,
    * compactions and closes.
@@ -167,6 +172,8 @@ public class HRegion implements HConstants, HeapSize { // , Writable{
 
     /**
      * Set flags that make this region read-only.
+     *
+     * @param onOff flip value for region r/o setting
      */
     synchronized void setReadOnly(final boolean onOff) {
       this.writesEnabled = !onOff;
@@ -182,7 +189,7 @@ public class HRegion implements HConstants, HeapSize { // , Writable{
     }
   }
 
-  private volatile WriteState writestate = new WriteState();
+  private final WriteState writestate = new WriteState();
 
   final long memstoreFlushSize;
   private volatile long lastFlushTime;
@@ -201,7 +208,11 @@ public class HRegion implements HConstants, HeapSize { // , Writable{
   private final Object splitLock = new Object();
   private long minSequenceId;
   private boolean splitRequest;
-  
+
+
+  private final ReadWriteConsistencyControl rwcc =
+      new ReadWriteConsistencyControl();
+
   /**
    * Name of the region info file that resides just under the region directory.
    */
@@ -931,14 +942,17 @@ public class HRegion implements HConstants, HeapSize { // , Writable{
     // during the flush
     long sequenceId = -1L;
     long completeSequenceId = -1L;
+
+    // we have to take a write lock during snapshot, or else a write could
+    // end up in both snapshot and memstore (makes it difficult to do atomic
+    // rows then)
     this.updatesLock.writeLock().lock();
-    // Get current size of memstores.
     final long currentMemStoreSize = this.memstoreSize.get();
-    List<StoreFlusher> storeFlushers = new ArrayList<StoreFlusher>();
+    List<StoreFlusher> storeFlushers = new ArrayList<StoreFlusher>(stores.size());
     try {
       sequenceId = log.startCacheFlush();
       completeSequenceId = this.getCompleteCacheFlushSequenceId(sequenceId);
-      // create the store flushers
+
       for (Store s : stores.values()) {
         storeFlushers.add(s.getStoreFlusher(completeSequenceId));
       }
@@ -969,19 +983,13 @@ public class HRegion implements HConstants, HeapSize { // , Writable{
       /**
        * Switch between memstore and the new store file
        */
-      this.newScannerLock.writeLock().lock();
-      try {
-        for (StoreFlusher flusher : storeFlushers) {
-          boolean needsCompaction = flusher.commit();
-          if (needsCompaction) {
-            compactionRequested = true;
-          }
+      for (StoreFlusher flusher : storeFlushers) {
+        boolean needsCompaction = flusher.commit();
+        if (needsCompaction) {
+          compactionRequested = true;
         }
-      } finally {
-        this.newScannerLock.writeLock().unlock();
       }
 
-      // clear the stireFlushers list
       storeFlushers.clear();
       // Set down the memstore size by amount of flush.
       this.memstoreSize.addAndGet(-currentMemStoreSize);
@@ -1155,7 +1163,6 @@ public class HRegion implements HConstants, HeapSize { // , Writable{
     checkReadOnly();
     checkResources();
     Integer lid = null;
-    newScannerLock.writeLock().lock();
     splitsAndClosesLock.readLock().lock();
     try {
       byte [] row = delete.getRow();
@@ -1184,7 +1191,6 @@ public class HRegion implements HConstants, HeapSize { // , Writable{
     } finally {
       if(lockid == null) releaseRowLock(lid);
       splitsAndClosesLock.readLock().unlock();
-      newScannerLock.writeLock().unlock();
     }
   }
   
@@ -1289,8 +1295,9 @@ public class HRegion implements HConstants, HeapSize { // , Writable{
     // read lock, resources may run out.  For now, the thought is that this
     // will be extremely rare; we'll deal with it when it happens.
     checkResources();
-    newScannerLock.writeLock().lock();
     splitsAndClosesLock.readLock().lock();
+
+    // TODO take out the write lock here.
     try {
       // We obtain a per-row lock, so other clients will block while one client
       // performs an update. The read lock is released by the client calling
@@ -1300,6 +1307,9 @@ public class HRegion implements HConstants, HeapSize { // , Writable{
       byte [] row = put.getRow();
       // If we did not pass an existing row lock, obtain a new one
       Integer lid = getLock(lockid, row);
+      ReadWriteConsistencyControl.WriteEntry w =
+          rwcc.beginMemstoreInsert();
+
       byte [] now = Bytes.toBytes(System.currentTimeMillis());
       try {
         for (Map.Entry<byte[], List<KeyValue>> entry:
@@ -1307,16 +1317,19 @@ public class HRegion implements HConstants, HeapSize { // , Writable{
           byte [] family = entry.getKey();
           checkFamily(family);
           List<KeyValue> puts = entry.getValue();
-          if (updateKeys(puts, now)) {
+          if (updateKeys(puts, now, w.getWriteNumber())) {
             put(family, puts, writeToWAL);
           }
         }
       } finally {
+        // in theory we could remove the failed insert.
+        if (w != null)
+          rwcc.completeMemstoreInsert(w);
+
         if(lockid == null) releaseRowLock(lid);
       }
     } finally {
       splitsAndClosesLock.readLock().unlock();
-      newScannerLock.writeLock().unlock();
     }
   }
 
@@ -1353,7 +1366,10 @@ public class HRegion implements HConstants, HeapSize { // , Writable{
       byte [] now = Bytes.toBytes(System.currentTimeMillis());
 
       // Lock row
-      Integer lid = getLock(lockId, get.getRow()); 
+      Integer lid = getLock(lockId, get.getRow());
+      ReadWriteConsistencyControl.WriteEntry w =
+          rwcc.beginMemstoreInsert();
+
       List<KeyValue> result = new ArrayList<KeyValue>();
       try {
         //Getting data
@@ -1376,7 +1392,7 @@ public class HRegion implements HConstants, HeapSize { // , Writable{
             byte [] fam = entry.getKey();
             checkFamily(fam);
             List<KeyValue> puts = entry.getValue();
-            if(updateKeys(puts, now)) {
+            if(updateKeys(puts, now, w.getWriteNumber())) {
               put(fam, puts, writeToWAL);
             }
           }
@@ -1384,6 +1400,9 @@ public class HRegion implements HConstants, HeapSize { // , Writable{
         }
         return false;
       } finally {
+        if (w != null)
+          rwcc.completeMemstoreInsert(w);
+
         if(lockId == null) releaseRowLock(lid);
       }
     } finally {
@@ -1398,13 +1417,16 @@ public class HRegion implements HConstants, HeapSize { // , Writable{
    * This acts to replace LATEST_TIMESTAMP with now.
    * @param keys
    * @param now
+   * @param writeNumber
    * @return <code>true</code> when updating the time stamp completed.
    */
-  private boolean updateKeys(List<KeyValue> keys, byte [] now) {
+  private boolean updateKeys(List<KeyValue> keys, byte [] now,
+                             long writeNumber) {
     if(keys == null || keys.isEmpty()) {
       return false;
     }
     for(KeyValue key : keys) {
+      key.setMemstoreTS(writeNumber);
       if(key.getTimestamp() == HConstants.LATEST_TIMESTAMP) {
         key.updateLatestStamp(now);
       }
@@ -1755,7 +1777,7 @@ public class HRegion implements HConstants, HeapSize { // , Writable{
       if (additionalScanners != null) {
         scanners.addAll(additionalScanners);
       }
-      for (Map.Entry<byte[], NavigableSet<byte[]>> entry : 
+      for (Map.Entry<byte[], NavigableSet<byte[]>> entry :
           scan.getFamilyMap().entrySet()) {
         Store store = stores.get(entry.getKey());
         scanners.add(store.getScanner(scan, entry.getValue()));

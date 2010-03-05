@@ -185,7 +185,7 @@ public class Store implements HConstants, HeapSize {
       // second -> ms adjust for user data
       this.ttl *= 1000;
     }
-    this.memstore = new MemStore(this.comparator);
+    this.memstore = new MemStore(this.region.getRWCC(), this.comparator);
     this.regionCompactionDir = new Path(HRegion.getCompactionDir(basedir), 
         Integer.toString(info.getEncodedName()));
     this.storeName = this.family.getName();
@@ -495,7 +495,7 @@ public class Store implements HConstants, HeapSize {
 
   /**
    * Snapshot this stores memstore.  Call before running
-   * {@link #flushCache(long)} so it has some work to do.
+   * {@link #flushCache(long, java.util.SortedSet)} so it has some work to do.
    */
   void snapshot() {
     this.memstore.snapshot();
@@ -602,6 +602,7 @@ public class Store implements HConstants, HeapSize {
       this.storefiles.put(Long.valueOf(logCacheFlushId), sf);
       // Tell listeners of the change in readers.
       notifyChangedReadersObservers();
+
       this.memstore.clearSnapshot(set);
       return this.storefiles.size() >= this.compactionThreshold;
     } finally {
@@ -630,10 +631,8 @@ public class Store implements HConstants, HeapSize {
    * @param o Observer no longer interested in changes in set of Readers.
    */
   void deleteChangedReaderObserver(ChangedReadersObserver o) {
-    if(this.changedReaderObservers.size() > 0) {
-      if (!this.changedReaderObservers.remove(o)) {
-        LOG.warn("Not in set" + o);
-      }
+    if (!this.changedReaderObservers.remove(o)) {
+      LOG.warn("Not in set" + o);
     }
   }
 
@@ -852,7 +851,6 @@ public class Store implements HConstants, HeapSize {
   /**
    * Do a minor/major compaction.  Uses the scan infrastructure to make it easy.
    * 
-   * @param writer output writer
    * @param filesToCompact which files to compact
    * @param majorCompaction true to major compact (prune all deletes, max versions, etc)
    * @param maxId Readers maximum sequence id.
@@ -1282,6 +1280,7 @@ public class Store implements HConstants, HeapSize {
       final NavigableSet<byte []> targetCols) {
     lock.readLock().lock();
     try {
+      System.out.println("Store.getScanner is inside readlock");
       return new StoreScanner(this, scan, targetCols);
     } finally {
       lock.readLock().unlock();
