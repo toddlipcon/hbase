@@ -29,6 +29,8 @@ import java.lang.reflect.InvocationTargetException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -208,18 +210,48 @@ public class VerifiableEditor implements HConstants {
     }
 
     public Integer call() throws IOException {
-      HTable table = new HTable(conf, TABLE_NAME);
-      Random r = new Random(randomSeed);
-      String clientId = String.valueOf(randomSeed);
-      for (long i = 0; i < verifyUpTo; i++) {
-        int curWrite = r.nextInt();
-        byte[] curData = getDataToWrite(clientId, curWrite);
-        Get g = new Get(curData);
-        Result res = table.get(g);
-        byte[] gotValue = res.getValue(FAMILY_NAME, QUALIFIER_NAME);
-        if (! Bytes.equals(curData, gotValue)) {
-          throw new RuntimeException("VERIFICATION FAILED. iteration=" + i + "seed=" + randomSeed);
-        }
+      final Random r = new Random(randomSeed);
+      final String clientId = String.valueOf(randomSeed);
+
+      List<Thread> threads = new ArrayList<Thread>();
+      final AtomicReference<Throwable> err = new AtomicReference<Throwable>();
+
+      final AtomicLong curIteration = new AtomicLong();
+
+      for (int i = 0; i < 10; i++) {
+        Thread thr = new Thread() {
+          public void run() {
+            try {
+              HTable table = new HTable(conf, TABLE_NAME);
+              while (curIteration.get() < verifyUpTo) {
+                int curWrite;
+                long myIteration;
+                synchronized (r) {
+                  curWrite = r.nextInt();
+                  myIteration = curIteration.getAndIncrement();
+                }
+
+                byte[] curData = getDataToWrite(clientId, curWrite);
+                Get g = new Get(curData);
+                Result res = table.get(g);
+                byte[] gotValue = res.getValue(FAMILY_NAME, QUALIFIER_NAME);
+                if (! Bytes.equals(curData, gotValue)) {
+                  throw new RuntimeException("VERIFICATION FAILED. iteration=" + myIteration + "seed=" + randomSeed);
+                }
+              }
+            } catch (Throwable t) {
+              err.set(t);
+            }
+          }
+        };
+        threads.add(thr);
+        thr.start();
+      }
+      for (Thread thr : threads) {
+        try { thr.join(); } catch (InterruptedException ie) {}
+      }
+      if (err.get() != null) {
+        throw new RuntimeException(err.get());
       }
 
       LOG.info("Successfully verified " + verifyUpTo + " writes from " + randomSeed);
