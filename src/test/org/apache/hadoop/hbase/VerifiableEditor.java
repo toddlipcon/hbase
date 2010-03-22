@@ -236,7 +236,7 @@ public class VerifiableEditor implements HConstants {
                 Result res = table.get(g);
                 byte[] gotValue = res.getValue(FAMILY_NAME, QUALIFIER_NAME);
                 if (! Bytes.equals(curData, gotValue)) {
-                  throw new RuntimeException("VERIFICATION FAILED. iteration=" + myIteration + "seed=" + randomSeed);
+                  throw new RuntimeException("VERIFICATION FAILED. iteration=" + myIteration + "/" + verifyUpTo + " seed=" + randomSeed);
                 }
               }
             } catch (Throwable t) {
