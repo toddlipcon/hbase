@@ -108,7 +108,10 @@ public class HBaseTest
     String[] cols = cmd_.getOptionValue(OPT_READ).split(":");
     long startKey = Long.parseLong(cols[0]);
     long endKey = Long.parseLong(cols[1]);
-    int verifyPercent = Integer.parseInt(cols[2]);
+    int verifyPercent = 0 ;
+    if (cols.length > 2) {
+      verifyPercent = Integer.parseInt(cols[2]);
+    }
     int numThreads = (endKey - startKey > 1000)? 20 : 1;
     if (cols.length > 3) {
       numThreads = Integer.parseInt(cols[3]);
@@ -154,7 +157,11 @@ public class HBaseTest
       initAndParseArgs(args);
 
       HBaseTest hBaseTest = new HBaseTest();
+
       // create the HBase configuration from ZooKeeper node
+      if (!cmd_.hasOption(OPT_ZKNODE)) {
+        throw new RuntimeException("Missing ZKNode param");
+      }
       String[] zkNodes = cmd_.getOptionValue(OPT_ZKNODE).split(":");
       for(String zkNode : zkNodes) {
         HBaseConfiguration conf = HBaseUtils.getHBaseConfFromZkNode(zkNode);
