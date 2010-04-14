@@ -1260,7 +1260,10 @@ public class HRegionServer implements HConstants, HRegionInterface,
   public void abort() {
     this.abortRequested = true;
     this.reservedSpace.clear();
-    LOG.info("Dump of metrics: " + this.metrics.toString());
+    if (metrics != null) {
+      // metrics may not be initialized yet
+      LOG.info("Dump of metrics: " + this.metrics.toString());
+    }
     stop();
   }
 
@@ -1334,7 +1337,7 @@ public class HRegionServer implements HConstants, HRegionInterface,
           LOG.debug("sending initial server load: " + hsl);
         lastMsg = System.currentTimeMillis();
         boolean startCodeOk = false; 
-        while(!startCodeOk) {
+        while(!startCodeOk && !stopRequested.get()) {
           serverInfo.setStartCode(System.currentTimeMillis());
           startCodeOk = zooKeeperWrapper.writeRSLocation(this.serverInfo);
           if(!startCodeOk) {
