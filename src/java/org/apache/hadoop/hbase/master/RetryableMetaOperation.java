@@ -34,6 +34,7 @@ import org.apache.hadoop.hbase.TableNotDisabledException;
 import org.apache.hadoop.hbase.ipc.HRegionInterface;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Sleeper;
+import org.apache.hadoop.util.ReflectionUtils;
 
 /**
  * Uses Callable pattern so that operations against meta regions do not need
@@ -61,6 +62,15 @@ abstract class RetryableMetaOperation<T> implements Callable<T> {
         return null;
       }
       try {
+        // Seen an NPE here before, adding lots of logging to try to find it!
+        if (this.master == null) {
+          ReflectionUtils.logThreadInfo(LOG, "master null", 1);
+        } else if (this.master.connection == null) {
+          ReflectionUtils.logThreadInfo(LOG, "connection null", 1);
+        } else if (m == null) {
+          ReflectionUtils.logThreadInfo(LOG, "m null", 1);
+        }
+
         this.server =
           this.master.connection.getHRegionConnection(m.getServer());
         return this.call();
