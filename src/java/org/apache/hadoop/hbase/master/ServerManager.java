@@ -249,6 +249,8 @@ class ServerManager implements HConstants {
   throws IOException {
     HServerInfo info = new HServerInfo(serverInfo);
     if (isDead(info.getServerName())) {
+      LOG.info("Received report from region server " + info.getServerName() +
+        " previously marked dead. Rejecting report.");
       throw new Leases.LeaseStillHeldException(info.getServerName());
     }
     if (msgs.length > 0) {
