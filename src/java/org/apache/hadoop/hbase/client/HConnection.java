@@ -195,17 +195,6 @@ public interface HConnection {
   public <T> T getRegionServerForWithoutRetries(ServerCallable<T> callable) 
   throws IOException, RuntimeException;
   
-    
-  /**
-   * Process a batch of Puts. Does the retries.
-   * @param list A batch of Puts to process.
-   * @param tableName The name of the table
-   * @return Count of committed Puts.  On fault, < list.size().
-   * @throws IOException
-   */
-  public int processBatchOfRows(ArrayList<Put> list, byte[] tableName)
-  throws IOException;
-
   /**
    * Process a batch of Deletes. Does the retries.
    * @param list A batch of Deletes to process.

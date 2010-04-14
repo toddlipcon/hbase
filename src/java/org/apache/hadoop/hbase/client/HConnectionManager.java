@@ -1243,28 +1243,6 @@ public class HConnectionManager implements HConstants {
       }
     }
 
-    public int processBatchOfRows(final ArrayList<Put> list,
-      final byte[] tableName)
-    throws IOException {
-      if (list.isEmpty()) return 0;
-      if (list.size() > 1) Collections.sort(list);
-      Batch b = new Batch(this) {
-        @Override
-        int doCall(final List<Row> currentList, final byte [] row,
-          final byte [] tableName)
-        throws IOException, RuntimeException {
-          final Put [] puts = currentList.toArray(PUT_ARRAY_TYPE);
-          return getRegionServerWithRetries(new ServerCallable<Integer>(this.c,
-              tableName, row) {
-            public Integer call() throws IOException {
-              return server.put(location.getRegionInfo().getRegionName(), puts);
-            }
-          });
-        }
-      };
-      return b.process(list, tableName);
-    }
-
     public int processBatchOfDeletes(final List<Delete> list,
       final byte[] tableName)
     throws IOException {
