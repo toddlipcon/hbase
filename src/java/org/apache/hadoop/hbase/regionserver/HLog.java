@@ -66,6 +66,7 @@ import org.apache.hadoop.hbase.util.ClassSize;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.Threads;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
+import org.apache.hadoop.hdfs.protocol.AlreadyBeingCreatedException;
 import org.apache.hadoop.io.SequenceFile;
 import org.apache.hadoop.io.SequenceFile.CompressionType;
 import org.apache.hadoop.io.SequenceFile.Metadata;
@@ -1485,7 +1486,7 @@ public class HLog implements HConstants, Syncable {
    * @param append
    */
   public static void recoverLog(final FileSystem fs, final Path p,
-      final boolean append) {
+      final boolean append) throws IOException {
     if (!append) {
       return;
     }
@@ -1504,11 +1505,17 @@ public class HLog implements HConstants, Syncable {
         out.close();
         recovered = true;
       } catch (IOException e) {
-        LOG.info("Failed open for append, waiting on lease recovery: " + p, e);
-        try {
-          Thread.sleep(1000);
-        } catch (InterruptedException ex) {
-          // ignore it and try again
+        e = RemoteExceptionHandler.checkIOException(e);
+        if (e instanceof AlreadyBeingCreatedException) {
+          LOG.info("Failed open for append, waiting on lease recovery: " + p
+            + "(" + e.getMessage() + ")");
+          try {
+            Thread.sleep(1000);
+          } catch (InterruptedException ex) {
+            // ignore it and try again
+          }
+        } else {
+          throw new IOException("Failed to open " + p + " for append", e);
         }
       }
     }
