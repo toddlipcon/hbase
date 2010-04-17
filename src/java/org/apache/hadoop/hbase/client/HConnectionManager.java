@@ -1067,7 +1067,6 @@ public class HConnectionManager implements HConstants {
           return callable.call();
         } catch (Throwable t) {
           t = translateException(t);
-          LOG.debug("Exception in getRegionServerWithRetries", t);
           exceptions.add(t);
           if (tries == numRetries - 1) {
             throw new RetriesExhaustedException(callable.getServerName(),
@@ -1088,14 +1087,10 @@ public class HConnectionManager implements HConstants {
       try {
         callable.instantiateServer(false);
         return callable.call();
-      } catch (Exception t) {
-        Throwable t2 = translateException(t);
-        if (t2 instanceof IOException) {
-          throw (IOException)t2;
-        } else {
-          throw new RuntimeException(t2);
-        }
+      } catch (Throwable t) {
+        t = translateException(t);
       }
+      return null;
     }
 
     private HRegionLocation
@@ -1333,7 +1328,6 @@ public class HConnectionManager implements HConstants {
           MultiPut request = multiPuts.get(i);
           try {
             MultiPutResponse resp = future.get();
-            assert resp != null;
 
             // For each region
             for (Map.Entry<byte[], List<Put>> e : request.puts.entrySet()) {
@@ -1394,7 +1388,7 @@ public class HConnectionManager implements HConstants {
       final HConnection connection = this;
       return new Callable<MultiPutResponse>() {
         public MultiPutResponse call() throws IOException {
-          return getRegionServerForWithoutRetries(
+          return getRegionServerWithRetries(
               new ServerCallable<MultiPutResponse>(connection, tableName, null) {
                 public MultiPutResponse call() throws IOException {
                   MultiPutResponse resp = server.multiPut(puts);
