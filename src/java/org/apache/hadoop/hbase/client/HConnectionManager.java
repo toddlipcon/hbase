@@ -681,7 +681,7 @@ public class HConnectionManager implements HConstants {
           // This block guards against two threads trying to load the meta
           // region at the same time. The first will load the meta region and
           // the second will use the value that the first one found.
-          synchronized(regionLockObject) {
+          synchronized (regionLockObject) {
             // Check the cache again for a hit in case some other thread made the
             // same query while we were waiting on the lock. If not supposed to
             // be using the cache, delete any existing cached location so it won't
@@ -1082,15 +1082,19 @@ public class HConnectionManager implements HConstants {
       return null;    
     }
     
-    public <T> T getRegionServerForWithoutRetries(ServerCallable<T> callable)
+    public <T> T getRegionServerWithoutRetries(ServerCallable<T> callable)
         throws IOException, RuntimeException {
       try {
         callable.instantiateServer(false);
         return callable.call();
       } catch (Throwable t) {
-        t = translateException(t);
+        Throwable t2 = translateException(t);
+        if (t2 instanceof IOException) {
+          throw (IOException)t2;
+        } else {
+          throw new RuntimeException(t2);
+        }
       }
-      return null;
     }
 
     private HRegionLocation
@@ -1284,7 +1288,12 @@ public class HConnectionManager implements HConstants {
     }
 
     public void processBatchOfPuts(List<Put> list,
-                                   final byte[] tableName, ExecutorService pool) throws IOException {
+                                   final byte[] tableName,
+                                   ExecutorService pool) throws IOException {
+      boolean singletonList = list.size() == 1;
+      Throwable singleRowCause = null;
+      List<Put> permFails = new ArrayList<Put>();
+
       for ( int tries = 0 ; tries < numRetries && !list.isEmpty(); ++tries) {
         Collections.sort(list);
         Map<HServerAddress, MultiPut> regionPuts =
@@ -1350,10 +1359,20 @@ public class HConnectionManager implements HConstants {
             LOG.debug("Failed all from " + request.address, e);
             failed.addAll(request.allPuts());
           } catch (ExecutionException e) {
-            System.out.println(e);
             // all go into the failed list.
             LOG.debug("Failed all from " + request.address, e);
             failed.addAll(request.allPuts());
+
+            // Just give up, leaving the batch put list in an untouched/semi-committed state
+            if (e.getCause() instanceof DoNotRetryIOException) {
+              throw (DoNotRetryIOException) e.getCause();
+            }
+
+            if (singletonList) {
+              // be richer for reporting in a 1 row case.
+              singleRowCause = e.getCause();
+            }
+
           }
         }
         list.clear();
@@ -1369,15 +1388,20 @@ public class HConnectionManager implements HConstants {
               " ms!");
           try {
             Thread.sleep(sleepTime);
-          } catch (InterruptedException e) {
-
+          } catch (InterruptedException ignored) {
           }
         }
       }
+
+      if (singletonList) {
+        if (singleRowCause != null)
+          throw new IOException(singleRowCause);
+      }
+
       if (!list.isEmpty()) {
         // ran out of retries and didnt succeed everything!
         throw new RetriesExhaustedException("Still had " + list.size() + " puts left after retrying " +
-            numRetries + " times. Should have detail on which Regions failed the most");
+            numRetries + " times.");
       }
     }
 
@@ -1388,7 +1412,7 @@ public class HConnectionManager implements HConstants {
       final HConnection connection = this;
       return new Callable<MultiPutResponse>() {
         public MultiPutResponse call() throws IOException {
-          return getRegionServerWithRetries(
+          return getRegionServerWithoutRetries(
               new ServerCallable<MultiPutResponse>(connection, tableName, null) {
                 public MultiPutResponse call() throws IOException {
                   MultiPutResponse resp = server.multiPut(puts);

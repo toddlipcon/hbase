@@ -105,6 +105,7 @@ public class VerifiableEditor implements HConstants {
   private static final int ROW_LENGTH = 1000;
   private static final int ONE_GB = 1024 * 1024 * 1000;
   private static final int ROWS_PER_GB = ONE_GB / ROW_LENGTH;
+  private static final int NUM_WRITE_THREADS = 20;
   
   public static final byte [] TABLE_NAME = Bytes.toBytes("TestTable");
   public static final byte [] FAMILY_NAME = Bytes.toBytes("info");
@@ -131,25 +132,24 @@ public class VerifiableEditor implements HConstants {
   }
 
   private class Writer implements Callable<Integer> {
-    private long randomSeed;
-    private String clientId;
+    private AtomicLong randomSeedGenerator;
+
+    private ThreadLocal<Long> randomSeed = new ThreadLocal<Long>() {
+      protected Long initialValue() {
+        return randomSeedGenerator.incrementAndGet();
+      }
+    };
 
     public Writer(String args[]) {
-      this.randomSeed = System.currentTimeMillis();
-      this.clientId = generateClientId();
-    }
-
-    private String generateClientId() {
-      assert randomSeed != 0;
-      return String.valueOf(randomSeed); // TODO better
+      this.randomSeedGenerator = new AtomicLong(System.currentTimeMillis());
     }
   
     private RandomAccessFile openLocalRecorder() throws IOException {
       RandomAccessFile localRecorder = new RandomAccessFile(
-        "/dev/shm/hbase-verifiableeditor-" + clientId,
+        "/dev/shm/hbase-verifiableeditor-" + randomSeed.get(),
         "rws");
       localRecorder.seek(0);
-      localRecorder.writeLong(randomSeed);
+      localRecorder.writeLong(randomSeed.get());
       localRecorder.writeLong(-1);
       return localRecorder;
     }
@@ -163,16 +163,40 @@ public class VerifiableEditor implements HConstants {
 
     public Integer call() throws IOException  {
       createTableIfMissing();
-      doWrites();
+      
+      final AtomicReference<Throwable> err = new AtomicReference<Throwable>();
+      List<Thread> threads = new ArrayList<Thread>();
+
+      for (int i = 0; i < NUM_WRITE_THREADS; i++) {
+        Thread thr = new Thread() {
+          public void run() {
+            try {
+              doWrites();
+            } catch (Throwable t) {
+              err.set(t);
+            }
+          }
+        };
+        threads.add(thr);
+        thr.start();
+      }
+      for (Thread thr : threads) {
+        try { thr.join(); } catch (InterruptedException ie) {}
+      }
+      if (err.get() != null) {
+        throw new RuntimeException(err.get());
+      }
+
       return 0;
     }
 
     private void doWrites() throws IOException {
       RandomAccessFile recorder = openLocalRecorder();
       HTable table = new HTable(conf, TABLE_NAME);
-      Random r = new Random(randomSeed);
+      Random r = new Random(randomSeed.get());
       boolean stop = false;
       long iteration = 0;
+      String clientId = String.valueOf(randomSeed.get());
       while (!stop) {
         int curWrite = r.nextInt();
         byte[] curData = getDataToWrite(clientId, curWrite);

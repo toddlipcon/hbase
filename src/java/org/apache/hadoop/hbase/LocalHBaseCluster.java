@@ -116,6 +116,7 @@ public class LocalHBaseCluster implements HConstants {
       try {
         server = regionServerClass.getConstructor(HBaseConfiguration.class).
           newInstance(conf);
+        server.shutdownHDFS.set(false); // no, bad.
       } catch (Exception e) {
         IOException ioe = new IOException();
         ioe.initCause(e);
