@@ -118,10 +118,10 @@ public class HLog implements HConstants, Syncable {
   private final Path dir;
   private final Configuration conf;
   private final LogRollListener listener;
+  private boolean logRollRequested;
   private final long optionalFlushInterval;
   private final long blocksize;
   private final int flushlogentries;
-  private final AtomicInteger unflushedEntries = new AtomicInteger(0);
   private final Method syncfs;       // refers to SequenceFileWriter.syncFs()
   private OutputStream hdfs_out;     // OutputStream associated with the current SequenceFile.writer
   private int initialReplication;    // initial replication factor of SequenceFile.writer
@@ -169,6 +169,7 @@ public class HLog implements HConstants, Syncable {
 
   // We synchronize on updateLock to prevent updates and to prevent a log roll
   // during an update
+  // locked during appends
   private final Object updateLock = new Object();
 
   private final boolean enabled;
@@ -179,11 +180,6 @@ public class HLog implements HConstants, Syncable {
    * Keep the number of logs tidy.
    */
   private final int maxLogs;
-
-  /**
-   * Thread that handles group commit
-   */
-  private final LogSyncer logSyncerThread;
 
   static byte [] COMPLETE_CACHE_FLUSH;
   static {
@@ -305,10 +301,6 @@ public class HLog implements HConstants, Syncable {
       }
     }
     this.syncfs = m;
-  
-    logSyncerThread = new LogSyncer(this.optionalFlushInterval);
-    Threads.setDaemonThreadRunning(logSyncerThread,
-        Thread.currentThread().getName() + ".logSyncer");
   }
 
   /**
@@ -431,6 +423,7 @@ public class HLog implements HConstants, Syncable {
           }
         }
         this.numEntries.set(0);
+        this.logRollRequested = false;
       }
     } finally {
       this.cacheFlushLock.unlock();
@@ -608,14 +601,6 @@ public class HLog implements HConstants, Syncable {
    * @throws IOException
    */
   public void close() throws IOException {
-    try {
-      logSyncerThread.interrupt();
-      // Make sure we synced everything
-      logSyncerThread.join(this.optionalFlushInterval*2);
-    } catch (InterruptedException e) {
-      LOG.error("Exception while waiting for syncer thread to die", e);
-    }
-
     cacheFlushLock.lock();
     try {
       synchronized (updateLock) {
@@ -682,7 +667,6 @@ public class HLog implements HConstants, Syncable {
       // is greater than or equal to the value in lastSeqWritten.
       this.lastSeqWritten.putIfAbsent(regionName, Long.valueOf(seqNum));
       doWrite(logKey, logEdit);
-      this.unflushedEntries.incrementAndGet();
       this.numEntries.incrementAndGet();
     }
 
@@ -734,121 +718,18 @@ public class HLog implements HConstants, Syncable {
       HLogKey logKey = makeKey(regionName, tableName, seqNum, now);
       doWrite(logKey, edits);
       this.numEntries.incrementAndGet();
-
-      // Only count 1 row as an unflushed entry
-      this.unflushedEntries.incrementAndGet();
     }
 
     // sync txn to file system
     this.sync(isMetaRegion);
   }
 
-  /**
-    * This thread is responsible to call syncFs and buffer up the writers while
-    * it happens.
-    */
-   class LogSyncer extends Thread {
- 
-     // Using fairness to make sure locks are given in order
-     private final ReentrantLock lock = new ReentrantLock(true);
-
-     // Condition used to wait until we have something to sync
-     private final Condition queueEmpty = lock.newCondition();
- 
-    // Condition used to signal that the sync is done
-    private final Condition syncDone = lock.newCondition();
-
-    private final long optionalFlushInterval;
-
-    private boolean syncerShuttingDown = false;
-
-    LogSyncer(long optionalFlushInterval) {
-      this.optionalFlushInterval = optionalFlushInterval;
-    }
-
-    @Override
-    public void run() {
-      try {
-        lock.lock();
-         // awaiting with a timeout doesn't always
-         // throw exceptions on interrupt
-         while(!this.isInterrupted()) {
- 
-           // Wait until something has to be hflushed or do it if we waited
-           // enough time (useful if something appends but does not hflush).
-           // 0 or less means that it timed out and maybe waited a bit more.
-           if (!(queueEmpty.awaitNanos(
-                   this.optionalFlushInterval*1000000) <= 0)) {
-             forceSync = true;
-           }
- 
-           // We got the signal, let's hflush. We currently own the lock so new
-           // writes are waiting to acquire it in addToSyncQueue while the ones
-           // we hflush are waiting on await()
-           hflush();
- 
-           // Release all the clients waiting on the hflush. Notice that we still
-           // own the lock until we get back to await at which point all the
-           // other threads waiting will first acquire and release locks
-           syncDone.signalAll();
-         }
-       } catch (IOException e) {
-         LOG.error("Error while syncing, requesting close of hlog ", e);
-         requestLogRoll();
-       } catch (InterruptedException e) {
-         LOG.debug(getName() + "interrupted while waiting for sync requests");
-       } finally {
-         syncerShuttingDown = true;
-         syncDone.signalAll();
-         lock.unlock();
-         LOG.info(getName() + " exiting");
-       }
-     }
- 
-     /**
-      * This method first signals the thread that there's a sync needed
-      * and then waits for it to happen before returning.
-      */
-     public void addToSyncQueue(boolean force) {
- 
-       // Don't bother if somehow our append was already hflush
-       if (unflushedEntries.get() == 0) {
-         return;
-       }
-       lock.lock();
-       try {
-         if (syncerShuttingDown) {
-           LOG.warn(getName() + " was shut down while waiting for sync");
-           return;
-         }
-         if(force) {
-           forceSync = true;
-         }
-         // Wake the thread
-         queueEmpty.signal();
- 
-         // Wait for it to hflush
-         syncDone.await();
-       } catch (InterruptedException e) {
-         LOG.debug(getName() + " was interrupted while waiting for sync", e);
-       }
-       finally {
-         lock.unlock();
-       }
-    }
-  }
-
-  public void sync() {
+  public void sync() throws IOException {
     sync(false);
   }
 
-  /**
-   * This method calls the LogSyncer in order to group commit the sync
-   * with other threads.
-   * @param force For catalog regions, force the sync to happen
-   */
-  public void sync(boolean force) {
-    logSyncerThread.addToSyncQueue(force);
+  public void sync(boolean force) throws IOException {
+    hflush();
   }
   
   protected void hflush() throws IOException {
@@ -856,53 +737,55 @@ public class HLog implements HConstants, Syncable {
       if (this.closed) {
         return;
       }
-
-      boolean logRollRequested = false;
-
-      if (this.forceSync ||
-         this.unflushedEntries.get() >= this.flushlogentries) {
+    }
+    try {
+      long now = System.currentTimeMillis();
+      // this.writer.sync(); - todd thinks this is silly
+      if (this.syncfs != null) {
         try {
-          long now = System.currentTimeMillis();
-          this.writer.sync();
-          if (this.syncfs != null) {
-            try {
-             this.syncfs.invoke(this.writer, NO_ARGS); 
-            } catch (Exception e) {
-              throw new IOException("Reflection", e);
-            }
+         this.syncfs.invoke(this.writer, NO_ARGS); 
+        } catch (Exception e) {
+          throw new IOException("Reflection", e);
+        }
+      }
+      synchronized (this) {
+        this.syncTime += System.currentTimeMillis() - now;
+        this.syncOps++;
+        this.forceSync = false;
+      }
+      synchronized (this.updateLock) {
+        if (!logRollRequested) {
+          checkLowReplication();
+          if (this.writer.getLength() > this.logrollsize) {
+            requestLogRoll();
           }
-          this.syncTime += System.currentTimeMillis() - now;
-          this.syncOps++;
-          this.forceSync = false;
-          this.unflushedEntries.set(0);
-            
-          // if the number of replicas in HDFS has fallen below the initial   
-          // value, then roll logs.   
-          try {
-            int numCurrentReplicas = getLogReplication();
-            if (numCurrentReplicas != 0 &&  
-                numCurrentReplicas < this.initialReplication) {  
-              LOG.warn("HDFS pipeline error detected. " +   
-                  "Found " + numCurrentReplicas + " replicas but expecting " +
-                  this.initialReplication + " replicas. " +  
-                  " Requesting close of hlog.");  
-              requestLogRoll();
-              logRollRequested = true;
-            } 
-          } catch (Exception e) {   
-              LOG.warn("Unable to invoke DFSOutputStream.getNumCurrentReplicas" + e +
-                       " still proceeding ahead...");  
-          }
-        } catch (IOException e) {
-          LOG.fatal("Could not append. Requesting close of hlog", e);
-          requestLogRoll();
-          throw e;
         }
       }
 
-      if (!logRollRequested && (this.writer.getLength() > this.logrollsize)) {
+    } catch (IOException e) {
+      LOG.fatal("Could not append. Requesting close of hlog", e);
+      requestLogRoll();
+      throw e;
+    }
+  }
+
+  private synchronized void checkLowReplication() {
+    // if the number of replicas in HDFS has fallen below the initial   
+    // value, then roll logs.   
+    try {
+      int numCurrentReplicas = getLogReplication();
+      if (numCurrentReplicas != 0 &&  
+          numCurrentReplicas < this.initialReplication) {  
+        LOG.warn("HDFS pipeline error detected. " +   
+            "Found " + numCurrentReplicas + " replicas but expecting " +
+            this.initialReplication + " replicas. " +  
+            " Requesting close of hlog.");  
         requestLogRoll();
-      }
+        logRollRequested = true;
+      } 
+    } catch (Exception e) {   
+        LOG.warn("Unable to invoke DFSOutputStream.getNumCurrentReplicas" + e +
+                 " still proceeding ahead...");  
     }
   }
   
@@ -929,8 +812,8 @@ public class HLog implements HConstants, Syncable {
     return this.getNumCurrentReplicas != null;
   }
 
-  private void requestLogRoll() {
-    if (this.listener != null) {
+  private synchronized void requestLogRoll() {
+    if (this.listener != null && !logRollRequested) {
       this.listener.logRollRequested();
     }
   }
