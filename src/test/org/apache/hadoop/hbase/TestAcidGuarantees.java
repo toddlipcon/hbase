@@ -66,20 +66,25 @@ public class TestAcidGuarantees {
     Random rand = new Random();
     byte data[] = new byte[10];
     byte targetRow[];
+    byte targetFamilies[][];
     HTable table;
 
-    public AtomicityWriter(TestContext ctx, byte targetRow[]) throws IOException {
+    public AtomicityWriter(TestContext ctx, byte targetRow[],
+                           byte targetFamilies[][]) throws IOException {
       super(ctx);
       this.targetRow = targetRow;
+      this.targetFamilies = targetFamilies;
       table = new HTable(ctx.getConf(), TABLE_NAME);
     }
     public void doAnAction() throws Exception {
       Put p = new Put(targetRow); 
       rand.nextBytes(data);
 
-      for (int i = 0; i < NUM_COLS_TO_CHECK; i++) {
-        byte qualifier[] = Bytes.toBytes("col" + i);
-        p.add(FAMILY_A, qualifier, data);
+      for (byte[] family : targetFamilies) {
+        for (int i = 0; i < NUM_COLS_TO_CHECK; i++) {
+          byte qualifier[] = Bytes.toBytes("col" + i);
+          p.add(FAMILY_A, qualifier, data);
+        }
       }
       table.put(p);
     }
@@ -87,12 +92,15 @@ public class TestAcidGuarantees {
   
   public static class AtomicityReader extends TestThread {
     byte targetRow[];
+    byte targetFamilies[][];
     HTable table;
     int numVerified = 0;
 
-    public AtomicityReader(TestContext ctx, byte targetRow[]) throws IOException {
+    public AtomicityReader(TestContext ctx, byte targetRow[],
+                           byte targetFamilies[][]) throws IOException {
       super(ctx);
       this.targetRow = targetRow;
+      this.targetFamilies = targetFamilies;
       table = new HTable(ctx.getConf(), TABLE_NAME);
     }
 
@@ -101,14 +109,16 @@ public class TestAcidGuarantees {
       Result res = table.get(g);
       byte[] gotValue = null;
 
-      for (int i = 0; i < NUM_COLS_TO_CHECK; i++) {
-        byte qualifier[] = Bytes.toBytes("col" + i);
-        byte thisValue[] = res.getValue(FAMILY_A, qualifier);
-        if (gotValue != null && !Bytes.equals(gotValue, thisValue)) {
-          gotFailure(gotValue, res);
+      for (byte[] family : targetFamilies) {
+        for (int i = 0; i < NUM_COLS_TO_CHECK; i++) {
+          byte qualifier[] = Bytes.toBytes("col" + i);
+          byte thisValue[] = res.getValue(FAMILY_A, qualifier);
+          if (gotValue != null && !Bytes.equals(gotValue, thisValue)) {
+            gotFailure(gotValue, res);
+          }
+          numVerified++;
+          gotValue = thisValue;
         }
-        numVerified++;
-        gotValue = thisValue;
       }
     }
 
@@ -133,8 +143,8 @@ public class TestAcidGuarantees {
     TestContext ctx = new TestContext(util.getConfiguration());
     byte row[] = Bytes.toBytes("test_row");
 
-    ctx.addThread(new AtomicityWriter(ctx, row));
-    ctx.addThread(new AtomicityReader(ctx, row));
+    ctx.addThread(new AtomicityWriter(ctx, row, FAMILIES));
+    ctx.addThread(new AtomicityReader(ctx, row, FAMILIES));
     ctx.startThreads();
     ctx.waitFor(300000);
     ctx.stop();
