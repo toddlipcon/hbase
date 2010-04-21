@@ -1393,12 +1393,12 @@ public class HConnectionManager implements HConstants {
         }
       }
 
-      if (singletonList) {
-        if (singleRowCause != null)
-          throw new IOException(singleRowCause);
-      }
-
       if (!list.isEmpty()) {
+        if (singletonList && singleRowCause != null) {
+          throw new IOException(singleRowCause);
+        }
+
+
         // ran out of retries and didnt succeed everything!
         throw new RetriesExhaustedException("Still had " + list.size() + " puts left after retrying " +
             numRetries + " times.");
