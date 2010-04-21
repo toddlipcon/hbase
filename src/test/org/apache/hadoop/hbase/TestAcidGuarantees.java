@@ -132,12 +132,11 @@ public class TestAcidGuarantees {
     createTableIfMissing();
     TestContext ctx = new TestContext(util.getConfiguration());
     byte row[] = Bytes.toBytes("test_row");
-    AtomicityWriter writer = new AtomicityWriter(ctx, row);
 
-    ctx.addThread(writer);
+    ctx.addThread(new AtomicityWriter(ctx, row));
     ctx.addThread(new AtomicityReader(ctx, row));
     ctx.startThreads();
-    ctx.waitFor(60000);
+    ctx.waitFor(300000);
     ctx.stop();
   }
 

@@ -59,8 +59,8 @@ public abstract class MultithreadedTestUtil {
         long left = endTime - System.currentTimeMillis();
         if (left <= 0) break;
         synchronized (this) {
-          wait(left);
           checkException();
+          wait(left);
         }
       }
     }
@@ -72,7 +72,6 @@ public abstract class MultithreadedTestUtil {
 
     public synchronized void threadFailed(Throwable t) {
       if (err == null) err = t;
-      testThreads.remove(Thread.currentThread());
       notify();
     }
 
