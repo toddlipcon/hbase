@@ -31,6 +31,9 @@ import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hbase.MultithreadedTestUtil.TestThread;
+import org.apache.hadoop.hbase.MultithreadedTestUtil.TestContext;
+
 
 public class TestAcidGuarantees {
   protected static final Log LOG = LogFactory.getLog(TestAcidGuarantees.class);
@@ -40,115 +43,23 @@ public class TestAcidGuarantees {
   public static final byte [] FAMILY_C = Bytes.toBytes("C");
   public static final byte [] QUALIFIER_NAME = Bytes.toBytes("data");
 
+  public static final byte[][] FAMILIES = new byte[][] {
+    FAMILY_A, FAMILY_B, FAMILY_C };
+
+  private HBaseTestingUtility util;
+
   public static int NUM_COLS_TO_CHECK = 50;
 
-  protected static final HTableDescriptor TABLE_DESCRIPTOR;
-  static {
-    TABLE_DESCRIPTOR = new HTableDescriptor(TABLE_NAME);
-    TABLE_DESCRIPTOR.addFamily(new HColumnDescriptor(FAMILY_A));
-    TABLE_DESCRIPTOR.addFamily(new HColumnDescriptor(FAMILY_B));
-    TABLE_DESCRIPTOR.addFamily(new HColumnDescriptor(FAMILY_C));
-  }
- 
-
-  private void createTableIfMissing(HBaseConfiguration conf)
+  private void createTableIfMissing()
     throws IOException {
     try {
-      HBaseAdmin admin = new HBaseAdmin(conf);
-      admin.createTable(TABLE_DESCRIPTOR);
-      LOG.info("Created table!");
+      util.createTable(TABLE_NAME, FAMILIES);
     } catch (TableExistsException tee) {
     }
   }
 
-  public static class TestContext {
-    private final HBaseConfiguration conf;
-    private Throwable err = null;
-    private boolean stopped = false;
-    private int threadDoneCount = 0;
-    private Set<TestThread> testThreads = new HashSet<TestThread>();
-
-    public TestContext(HBaseConfiguration conf) {
-      this.conf = conf;
-    }
-    public HBaseConfiguration getConf() {
-      return conf;
-    }
-    public synchronized boolean shouldRun()  {
-      return !stopped && err == null;
-    }
-
-    public void addThread(TestThread t) {
-      testThreads.add(t);
-    }
-
-    public void startThreads() {
-      for (TestThread t : testThreads) {
-        t.start();
-      }
-    }
-
-    public void waitFor(long millis) throws Exception {
-      long endTime = System.currentTimeMillis() + millis;
-      while (!stopped) {
-        long left = endTime - System.currentTimeMillis();
-        if (left <= 0) break;
-        synchronized (this) {
-          wait(left);
-          checkException();
-        }
-      }
-    }
-    private synchronized void checkException() throws Exception {
-      if (err != null) {
-        throw new RuntimeException("Deferred", err);
-      }
-    }
-
-    public synchronized void threadFailed(Throwable t) {
-      if (err == null) err = t;
-      testThreads.remove(Thread.currentThread());
-      notify();
-    }
-
-    public synchronized void threadDone() {
-      threadDoneCount++;
-    }
-
-    public void stop() throws InterruptedException {
-      synchronized (this) {
-        stopped = true;
-      }
-      for (TestThread t : testThreads) {
-        t.join();
-      }
-    }
-  }
-
-  public static abstract class TestThread extends Thread {
-    final TestContext ctx;
-    protected boolean stopped;
-
-    public TestThread(TestContext ctx) {
-      this.ctx = ctx;
-    }
-
-    public void run() {
-      try {
-        while (ctx.shouldRun() && !stopped) {
-          doAnAction();
-        }
-      } catch (Throwable t) {
-        ctx.threadFailed(t);
-      }
-      ctx.threadDone();
-    }
-
-    protected void stopTestThread() {
-      this.stopped = true;
-    }
-
-    public abstract void doAnAction() throws Exception;
+  public TestAcidGuarantees(HBaseConfiguration conf) {
+    util = new HBaseTestingUtility(conf);
   }
 
   public static class AtomicityWriter extends TestThread {
@@ -207,9 +118,9 @@ public class TestAcidGuarantees {
       msg.append("Expected=").append(Bytes.toStringBinary(expected));
       msg.append("Got:\n");
       for (KeyValue kv : res.list()) {
-        msg.append("key=").append(kv.getKeyString());
-        msg.append(" val=").append(Bytes.toStringBinary(kv.getValue()));
-        msg.append(" ts=").append(kv.getTimestamp());
+        msg.append(kv.toString());
+        msg.append(" val= ");
+        msg.append(Bytes.toStringBinary(kv.getValue()));
         msg.append("\n");
       }
       throw new RuntimeException(msg.toString());
@@ -217,10 +128,9 @@ public class TestAcidGuarantees {
   }
 
 
-
-  public void runTestAtomicity(HBaseConfiguration conf) throws Exception {
-    createTableIfMissing(conf);
-    TestContext ctx = new TestContext(conf);
+  public void runTestAtomicity() throws Exception {
+    createTableIfMissing();
+    TestContext ctx = new TestContext(util.getConfiguration());
     byte row[] = Bytes.toBytes("test_row");
     AtomicityWriter writer = new AtomicityWriter(ctx, row);
 
@@ -233,6 +143,6 @@ public class TestAcidGuarantees {
 
   public static void main(String args[]) throws Exception {
     HBaseConfiguration c = new HBaseConfiguration();
-    new TestAcidGuarantees().runTestAtomicity(c);
+    new TestAcidGuarantees(c).runTestAtomicity();
   }
 }
