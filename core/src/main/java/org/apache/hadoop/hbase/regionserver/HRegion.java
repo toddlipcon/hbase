@@ -755,7 +755,7 @@ public class HRegion implements HConstants, HeapSize { // , Writable{
    * Clean out any vestiges of previous failed compactions.
    * @throws IOException
    */
-  private void doRegionCompactionPrep() throws IOException {
+  protected void doRegionCompactionPrep() throws IOException {
     doRegionCompactionCleanup();
   }
 

@@ -307,9 +307,9 @@ public class TestHLog extends HBaseTestCase implements HConstants {
         assertTrue(Bytes.equals(regionName, key.getRegionName()));
         assertTrue(Bytes.equals(tableName, key.getTablename()));
         KeyValue kv = val.getKeyValues().get(0);
-        assertTrue(Bytes.equals(HLog.METAROW, kv.getRow()));
-        assertTrue(Bytes.equals(HLog.METAFAMILY, kv.getFamily()));
-        assertEquals(0, Bytes.compareTo(HLog.COMPLETE_CACHE_FLUSH,
+        assertTrue(Bytes.equals(HLog.MarkerEntries.METAROW, kv.getRow()));
+        assertTrue(Bytes.equals(HLog.MarkerEntries.METAFAMILY, kv.getFamily()));
+        assertEquals(0, Bytes.compareTo(HLog.MarkerEntries.COMPLETE_CACHE_FLUSH,
           val.getKeyValues().get(0).getValue()));
         System.out.println(key + " " + val);
       }
@@ -373,9 +373,9 @@ public class TestHLog extends HBaseTestCase implements HConstants {
         assertTrue(Bytes.equals(hri.getRegionName(),
           entry.getKey().getRegionName()));
         assertTrue(Bytes.equals(tableName, entry.getKey().getTablename()));
-        assertTrue(Bytes.equals(HLog.METAROW, val.getRow()));
-        assertTrue(Bytes.equals(HLog.METAFAMILY, val.getFamily()));
-        assertEquals(0, Bytes.compareTo(HLog.COMPLETE_CACHE_FLUSH,
+        assertTrue(Bytes.equals(HLog.MarkerEntries.METAROW, val.getRow()));
+        assertTrue(Bytes.equals(HLog.MarkerEntries.METAFAMILY, val.getFamily()));
+        assertEquals(0, Bytes.compareTo(HLog.MarkerEntries.COMPLETE_CACHE_FLUSH,
           val.getValue()));
         System.out.println(entry.getKey() + " " + val);
       }

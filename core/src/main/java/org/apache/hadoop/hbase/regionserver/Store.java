@@ -25,6 +25,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hbase.FaultInjector;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
@@ -41,6 +42,7 @@ import org.apache.hadoop.hbase.io.hfile.HFileScanner;
 import org.apache.hadoop.hbase.regionserver.wal.HLog;
 import org.apache.hadoop.hbase.regionserver.wal.HLogKey;
 import org.apache.hadoop.hbase.regionserver.wal.WALEdit;
+import org.apache.hadoop.hbase.regionserver.wal.HLog.CompactionMarker;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.ClassSize;
 import org.apache.hadoop.hbase.util.FSUtils;
@@ -108,7 +110,21 @@ public class Store implements HConstants, HeapSize {
   private int maxFilesToCompact;
   private final long desiredMaxFileSize;
   private volatile long storeSize = 0L;
+  
+  /**
+   * Lock that allows only one flush to be ongoing at a time.
+   */
   private final Object flushLock = new Object();
+  
+  /**
+   * RWLock for store operations.
+   * Locked in shared mode when the list of component stores is looked at:
+   *   - all reads/writes to table data
+   *   - checking for split
+   * Locked in exclusive mode when the list of component stores is modified:
+   *   - closing
+   *   - completing a compaction
+   */
   final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
   final byte [] storeName;
   private final String storeNameStr;
@@ -350,7 +366,7 @@ public class Store implements HConstants, HeapSize {
         for (KeyValue kv : val.getKeyValues()) {
           // Check this edit is for me. Also, guard against writing the special
           // METACOLUMN info such as HBASE::CACHEFLUSH entries
-          if (kv.matchingFamily(HLog.METAFAMILY) ||
+          if (kv.matchingFamily(HLog.MarkerEntries.METAFAMILY) ||
               !Bytes.equals(key.getRegionName(), region.regionInfo.getRegionName()) ||
               !kv.matchingFamily(family.getName())) {
               continue;
@@ -958,19 +974,31 @@ public class Store implements HConstants, HeapSize {
   private StoreFile completeCompaction(final List<StoreFile> compactedFiles,
     final HFile.Writer compactedFile)
   throws IOException {
+
+    List<Path> inputPaths = new ArrayList<Path>();
+    for (StoreFile f : compactedFiles) {
+      inputPaths.add(f.getPath());
+    }
+    Path outputPath = (compactedFile != null) ?
+        compactedFile.getPath() : null;
+    CompactionMarker marker = new CompactionMarker(
+        region.getTableDesc().getName(),
+        region.getRegionName(),
+        getFamily().getName(),
+        inputPaths,
+        outputPath,
+        getHomeDir());
+
+    region.getLog().writeCompactionMarker(marker);
+    
     // 1. Moving the new files into place -- if there is a new file (may not
     // be if all cells were expired or deleted).
     StoreFile result = null;
     if (compactedFile != null) {
-      Path p = null;
-      try {
-        p = StoreFile.rename(this.fs, compactedFile.getPath(),
-          StoreFile.getRandomFilename(fs, this.homedir));
-      } catch (IOException e) {
-        LOG.error("Failed move of compacted file " + compactedFile.getPath(), e);
-        return null;
-      }
-      result = new StoreFile(this.fs, p, blockcache, this.conf, this.inMemory);
+      Path dstPath = moveCompactedFileIntoHomeDir(
+          fs, compactedFile.getPath(), homedir);
+      
+      result = new StoreFile(this.fs, dstPath, blockcache, this.conf, this.inMemory);
     }
     this.lock.writeLock().lock();
     try {
@@ -1000,14 +1028,15 @@ public class Store implements HConstants, HeapSize {
         notifyChangedReadersObservers();
         // Finally, delete old store files.
         for (StoreFile hsf: compactedFiles) {
+          FaultInjector.runPoint(FaultInjector.Point.COMPACTION_DELETE_OLD, hsf);
           hsf.delete();
         }
       } catch (IOException e) {
-        e = RemoteExceptionHandler.checkIOException(e);
         LOG.error("Failed replacing compacted files in " + this.storeNameStr +
           ". Compacted file is " + (result == null? "none": result.toString()) +
           ".  Files replaced " + compactedFiles.toString() +
           " some of which may have been already removed", e);
+        throw e;
       }
       // 4. Compute new store size
       this.storeSize = 0L;
@@ -1023,6 +1052,40 @@ public class Store implements HConstants, HeapSize {
       this.lock.writeLock().unlock();
     }
     return result;
+  }
+  
+  private static Path moveCompactedFileIntoHomeDir(
+      FileSystem fs, Path srcPath, Path homeDir) throws IOException {
+    Path dstPath = StoreFile.getRandomFilename(fs, homeDir);
+    try {
+      FaultInjector.runPoint(FaultInjector.Point.COMPACTION_BEFORE_RENAME,
+          srcPath, dstPath);
+          
+      StoreFile.rename(fs, srcPath, dstPath);
+    } catch (IOException e) {
+      LOG.error("Failed move of compacted file " + srcPath, e);
+      throw e;
+    }
+    return dstPath;
+  }
+    
+  // TODO doc
+  public static void completeCompactionMarker(
+      FileSystem fs,
+      HLog.CompactionMarker marker) throws IOException {
+    List<Path> inputPaths = marker.getCompactionInput();
+    Path compactedFile = marker.getCompactedFile();
+    Path homedir = marker.getStoreHomeDir();
+    if (compactedFile != null && fs.exists(compactedFile)) {
+      // We didn't finish moving it
+      LOG.info("Moving compacted file " + compactedFile + 
+          " into store directory " + homedir);
+      moveCompactedFileIntoHomeDir(fs, compactedFile, homedir);
+    }
+    for (Path p : inputPaths) {
+      LOG.info("Removing already-compacted file " + p);
+      fs.delete(p, true);
+    }
   }
 
   // ////////////////////////////////////////////////////////////////////////////
@@ -1318,6 +1381,10 @@ public class Store implements HConstants, HeapSize {
     return this.storefiles.size();
   }
 
+  Path getHomeDir() {
+    return this.homedir;
+  }
+  
   /**
    * @return The size of the store files, in bytes.
    */
@@ -1424,8 +1491,8 @@ public class Store implements HConstants, HeapSize {
     // Column matching and version enforcement
     QueryMatcher matcher = new QueryMatcher(get, this.family.getName(), columns,
       this.ttl, keyComparator, versionsToReturn(get.getMaxVersions()));
-    this.lock.readLock().lock();
     try {
+      this.lock.readLock().lock();
       // Read from memstore
       if(this.memstore.get(matcher, result)) {
         // Received early-out from memstore

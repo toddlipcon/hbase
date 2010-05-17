@@ -98,13 +98,7 @@ public class TestFullLogReconstruction {
 
     // Load up the table with simple rows and count them
     int initialCount = TEST_UTIL.loadTable(table, FAMILY);
-    Scan scan = new Scan();
-    ResultScanner results = table.getScanner(scan);
-    int count = 0;
-    for (Result res : results) {
-      count++;
-    }
-    results.close();
+    int count = TEST_UTIL.countRows(table);
 
     assertEquals(initialCount, count);
 
@@ -113,12 +107,7 @@ public class TestFullLogReconstruction {
     }
 
     TEST_UTIL.expireRegionServerSession(0);
-    scan = new Scan();
-    results = table.getScanner(scan);
-    int newCount = 0;
-    for (Result res : results) {
-      newCount++;
-    }
+    int newCount = TEST_UTIL.countRows(table);
     assertEquals(count, newCount);
   }
 }

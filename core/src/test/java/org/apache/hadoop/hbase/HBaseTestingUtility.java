@@ -410,6 +410,27 @@ public class HBaseTestingUtility {
     return rowCount;
   }
 
+  public void loadNumericRows(final HTable t, final byte[] f,
+      int startRow, int endRow) throws IOException {
+    for (int i = startRow; i < endRow; i++) {
+      byte[] data = Bytes.toBytes(String.valueOf(i));
+      Put put = new Put(data);
+      put.add(f, null, data);
+      t.put(put);
+    }
+  }  
+  
+  public int countRows(final HTable table) throws IOException {
+    Scan scan = new Scan();
+    ResultScanner results = table.getScanner(scan);
+    int count = 0;
+    for (@SuppressWarnings("unused") Result res : results) {
+      count++;
+    }
+    results.close();
+    return count;
+  }
+
   /**
    * Creates many regions names "aaa" to "zzz".
    *

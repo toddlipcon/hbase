@@ -19,7 +19,9 @@
  */
 package org.apache.hadoop.hbase.regionserver.wal;
 
+import java.io.ByteArrayInputStream;
 import java.io.DataInput;
+import java.io.DataInputStream;
 import java.io.DataOutput;
 import java.io.EOFException;
 import java.io.FileNotFoundException;
@@ -62,6 +64,7 @@ import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.RemoteExceptionHandler;
 import org.apache.hadoop.hbase.regionserver.HRegion;
+import org.apache.hadoop.hbase.regionserver.Store;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.ClassSize;
 import org.apache.hadoop.hbase.util.FSUtils;
@@ -69,8 +72,10 @@ import org.apache.hadoop.hbase.util.Threads;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.hdfs.protocol.AlreadyBeingCreatedException;
 import org.apache.hadoop.hdfs.protocol.FSConstants;
+import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.io.SequenceFile;
 import org.apache.hadoop.io.Writable;
+import org.apache.hadoop.io.WritableUtils;
 
 /**
  * HLog stores all the edits to the HStore.  Its the hbase write-ahead-log
@@ -114,8 +119,6 @@ import org.apache.hadoop.io.Writable;
 public class HLog implements HConstants, Syncable {
   static final Log LOG = LogFactory.getLog(HLog.class);
   private static final String HLOG_DATFILE = "hlog.dat.";
-  public static final byte [] METAFAMILY = Bytes.toBytes("METAFAMILY");
-  static final byte [] METAROW = Bytes.toBytes("METAROW");
   private final FileSystem fs;
   private final Path dir;
   private final Configuration conf;
@@ -209,13 +212,20 @@ public class HLog implements HConstants, Syncable {
    */
   private final LogSyncer logSyncerThread;
 
-  static byte [] COMPLETE_CACHE_FLUSH;
-  static {
-    try {
-      COMPLETE_CACHE_FLUSH = "HBASE::CACHEFLUSH".getBytes(UTF8_ENCODING);
-    } catch (UnsupportedEncodingException e) {
-      assert(false);
-    }
+  /**
+   * Special log entries used to signify transitions taken by the
+   * region server.
+   */
+  abstract public static class MarkerEntries {
+    public static final byte [] METAFAMILY = Bytes.toBytes("METAFAMILY");
+    static final byte [] METAROW = Bytes.toBytes("METAROW");
+    static final byte[] COMPLETE_CACHE_FLUSH = Bytes.toBytes("HBASE::CACHEFLUSH");
+    static final byte[] COMPACTION = Bytes.toBytes("HBASE::COMPACTION");
+    // TODO this isn't very good
+    static HTableDescriptor MARKER_TABLE_DESC =
+      HTableDescriptor.META_TABLEDESC;
+    static HRegionInfo MARKER_REGIONINFO =
+      new HRegionInfo(MARKER_TABLE_DESC, null, null);
   }
 
   // For measuring latency of writes
@@ -349,6 +359,13 @@ public class HLog implements HConstants, Syncable {
    */
   public long getFilenum() {
     return this.filenum;
+  }
+
+  /**
+   * @return the directory this hlog writes into
+   */
+  public Path getDir() {
+    return dir;
   }
 
   /**
@@ -666,12 +683,14 @@ public class HLog implements HConstants, Syncable {
   public void closeAndDelete() throws IOException {
     close();
     FileStatus[] files = fs.listStatus(this.dir);
-    for(FileStatus file : files) {
-      fs.rename(file.getPath(),
-          getHLogArchivePath(this.oldLogDir, file.getPath()));
+    if (files != null) {
+      for(FileStatus file : files) {
+        fs.rename(file.getPath(),
+            getHLogArchivePath(this.oldLogDir, file.getPath()));
+      }
+      LOG.debug("Moved " + files.length + " log files to " +
+          FSUtils.getPath(this.oldLogDir));
     }
-    LOG.debug("Moved " + files.length + " log files to " +
-        FSUtils.getPath(this.oldLogDir));
     fs.delete(dir, true);
   }
 
@@ -768,7 +787,7 @@ public class HLog implements HConstants, Syncable {
    *
    * Later, if we sort by these keys, we obtain all the relevant edits for a
    * given key-range of the HRegion (TODO). Any edits that do not have a
-   * matching COMPLETE_CACHEFLUSH message can be discarded.
+   * matching COMPLETE_CACHE_FLUSH message can be discarded.
    *
    * <p>
    * Logs cannot be restarted once closed, or once the HLog process dies. Each
@@ -999,6 +1018,7 @@ public class HLog implements HConstants, Syncable {
     }
   }
 
+  // TODO remove "info" param (unused)
   protected void doWrite(HRegionInfo info, HLogKey logKey, WALEdit logEdit)
   throws IOException {
     if (!this.enabled) {
@@ -1059,7 +1079,8 @@ public class HLog implements HConstants, Syncable {
   /**
    * Complete the cache flush
    *
-   * Protected by cacheFlushLock
+   * Protected by cacheFlushLock, and releases this lock when done!
+   * TODO this is awful.
    *
    * @param regionName
    * @param tableName
@@ -1076,7 +1097,7 @@ public class HLog implements HConstants, Syncable {
       }
       synchronized (updateLock) {
         long now = System.currentTimeMillis();
-        WALEdit edit = completeCacheFlushLogEdit();
+        WALEdit edit = createCompleteCacheFlushLogEdit();
         HLogKey key = makeKey(regionName, tableName, logSeqId,
             System.currentTimeMillis());
         this.writer.append(new Entry(key, edit));
@@ -1096,9 +1117,31 @@ public class HLog implements HConstants, Syncable {
     }
   }
 
-  private WALEdit completeCacheFlushLogEdit() {
-    KeyValue kv = new KeyValue(METAROW, METAFAMILY, null,
-      System.currentTimeMillis(), COMPLETE_CACHE_FLUSH);
+  /**
+   * Write the marker that a compaction has succeeded and is about to be committed.
+   * This provides info to the HMaster to allow it to recover the compaction if
+   * this regionserver dies in the middle. It also prevents the compaction from
+   * finishing if this regionserver has already lost its lease on the log.
+   */
+  public void writeCompactionMarker(CompactionMarker marker)
+  throws IOException {
+    byte[] markerBytes = WritableUtils.toByteArray(marker);
+    KeyValue metaKv = new KeyValue(
+        MarkerEntries.METAROW, MarkerEntries.METAFAMILY,
+        MarkerEntries.COMPACTION,
+        markerBytes);
+    
+    WALEdit edits = new WALEdit();
+    edits.add(metaKv);
+    long now = System.currentTimeMillis();
+    append(MarkerEntries.MARKER_REGIONINFO, edits, now, true);
+    LOG.info("Appended compaction marker " + marker);
+  }
+      
+
+  private WALEdit createCompleteCacheFlushLogEdit() {
+    KeyValue kv = new KeyValue(MarkerEntries.METAROW, MarkerEntries.METAFAMILY, null,
+      System.currentTimeMillis(), MarkerEntries.COMPLETE_CACHE_FLUSH);
     WALEdit e = new WALEdit();
     e.add(kv);
     return e;
@@ -1115,14 +1158,6 @@ public class HLog implements HConstants, Syncable {
   }
 
   /**
-   * @param family
-   * @return true if the column is a meta column
-   */
-  public static boolean isMetaFamily(byte [] family) {
-    return Bytes.equals(METAFAMILY, family);
-  }
-
-  /**
    * Split up a bunch of regionserver commit log files that are no longer
    * being written to, into new files, one per region for region to replay on
    * startup. Delete the old log files when finished.
@@ -1130,7 +1165,7 @@ public class HLog implements HConstants, Syncable {
    * @param rootDir qualified root directory of the HBase instance
    * @param srcDir Directory of log files to split: e.g.
    *                <code>${ROOTDIR}/log_HOST_PORT</code>
-   * @param oldLogDir
+   * @param oldLogDir directory into which post-split logs get moved
    * @param fs FileSystem
    * @param conf Configuration
    * @throws IOException
@@ -1272,6 +1307,13 @@ public class HLog implements HConstants, Syncable {
               Entry entry;
               while ((entry = in.next()) != null) {
                 byte [] regionName = entry.getKey().getRegionName();
+
+                if (Bytes.equals(regionName,
+                      MarkerEntries.MARKER_REGIONINFO.getRegionName())) {
+                  handleMarkerEntryRecovery(fs, entry.getKey(), entry.getEdit());
+                  continue;
+                }
+
                 LinkedList<HLog.Entry> queue = logEntries.get(regionName);
                 if (queue == null) {
                   queue = new LinkedList<HLog.Entry>();
@@ -1490,6 +1532,28 @@ public class HLog implements HConstants, Syncable {
     return splits;
   }
 
+  private static void handleMarkerEntryRecovery(
+      FileSystem fs, HLogKey key, WALEdit val) throws IOException {
+    LOG.info("Handling recovery of marker entry: " + key + " val=" + val);
+    List<KeyValue> kvs = val.getKeyValues();
+    if (kvs.size() != 1) {
+      throw new IOException("Invalid marker kv: " + val);
+    }
+    KeyValue kv = kvs.get(0);
+    assert Bytes.equals(kv.getFamily(), MarkerEntries.METAFAMILY);
+    assert Bytes.equals(kv.getRow(), MarkerEntries.METAROW);
+    byte[] qual = kv.getQualifier();
+    if (Bytes.equals(qual, MarkerEntries.COMPACTION)) {
+      CompactionMarker compaction = new CompactionMarker();
+      compaction.readFields(
+          new DataInputStream(new ByteArrayInputStream(kv.getValue())));
+      LOG.info("Finishing possibly incomplete compaction: " + compaction);
+      Store.completeCompactionMarker(fs, compaction);
+    } else {
+      LOG.error("Unknown log marker entry type: " + Bytes.toString(qual));
+    }
+  }
+
   /*
    * @param conf
    * @return True if append enabled and we have the syncFs in our path.
@@ -1690,6 +1754,98 @@ public class HLog implements HConstants, Syncable {
     return this.actionListeners.remove(list);
   }
 
+  /**
+   * A marker that a compaction has occurred. This marker has enough
+   * information to allow a recovering regionserver to "finish" the
+   * compaction if the first fails in the middle.
+   */
+  public static class CompactionMarker implements Writable {
+    private BytesWritable tableName, regionName, familyName;
+    private List<Path> compactionInput;
+    private Path compactedFile;
+    private Path storeHomeDir;
+    private static final int CUR_VERSION = 1;
+    
+    public CompactionMarker() {
+      tableName = new BytesWritable();
+      regionName = new BytesWritable();
+      familyName = new BytesWritable();
+    }
+    
+    public CompactionMarker(
+        byte[] table, byte[] region, byte[] family,
+        List<Path> compactionInput, Path compactedFile,
+        Path storeHomeDir) {
+      tableName = new BytesWritable(table);
+      regionName = new BytesWritable(region);
+      familyName = new BytesWritable(family);
+      this.compactionInput = new ArrayList<Path>(compactionInput);
+      this.compactedFile = compactedFile;
+      this.storeHomeDir = storeHomeDir;
+    }
+    
+    public List<Path> getCompactionInput() {
+      return compactionInput;
+    }
+    
+    public Path getCompactedFile() {
+      return compactedFile;
+    }
+    
+    @Override
+    public void readFields(DataInput in) throws IOException {
+      int version = in.readInt();
+      if (version != 1) {
+        throw new IOException("Unexpected version: " + version);
+      }
+      tableName.readFields(in);
+      regionName.readFields(in);
+      familyName.readFields(in);
+      if (in.readBoolean()) {
+        compactedFile = new Path(WritableUtils.readString(in));
+      } else {
+        compactedFile = null;
+      }
+      storeHomeDir = new Path(WritableUtils.readString(in));
+      int numInput = in.readInt();
+      compactionInput = new ArrayList<Path>(numInput);
+      for (int i = 0; i < numInput; i++) {
+        compactionInput.add(new Path(WritableUtils.readString(in)));
+      }
+    }
+
+    @Override
+    public void write(DataOutput out) throws IOException {
+      out.writeInt(CUR_VERSION);
+      tableName.write(out);
+      regionName.write(out);
+      familyName.write(out);
+      if (compactedFile != null) {
+        out.writeBoolean(true);
+        WritableUtils.writeString(out, compactedFile.toString());
+      } else {
+        out.writeBoolean(false);
+      }
+      WritableUtils.writeString(out, storeHomeDir.toString());
+      out.writeInt(compactionInput.size());
+      for (Path p : compactionInput) {
+        WritableUtils.writeString(out, p.toString());
+      }
+    }
+    
+    public String toString() {
+      return "CompactionMarker(region=" +
+        Bytes.toString(regionName.getBytes(), 0, regionName.getLength()) +
+        ",family=" +
+        Bytes.toString(familyName.getBytes(), 0, familyName.getLength()) +
+        ")";
+    }
+
+    public Path getStoreHomeDir() {
+      return storeHomeDir;
+    }
+  }
+  
   /**
    * Pass one or more log file names and it will either dump out a text version
    * on <code>stdout</code> or split the specified log files.

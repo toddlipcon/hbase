@@ -34,6 +34,7 @@ import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.JVMClusterUtil;
 import org.apache.hadoop.hbase.util.Threads;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
@@ -378,7 +379,20 @@ public class MiniHBaseCluster implements HConstants {
     }
     return index;
   }
-
+  
+  public List<HRegion> findRegionsForTable(byte[] tableName) {
+    ArrayList<HRegion> ret = new ArrayList<HRegion>();
+    for (JVMClusterUtil.RegionServerThread rst : getRegionServerThreads()) {
+      HRegionServer hrs = rst.getRegionServer();
+    
+      for (HRegion region : hrs.getOnlineRegions()) {
+        if (Bytes.equals(region.getTableDesc().getName(), tableName)) {
+          ret.add(region);
+        }
+      }
+    }
+    return ret;
+  }
   /**
    * Add a message to include in the responses send a regionserver when it
    * checks back in.
