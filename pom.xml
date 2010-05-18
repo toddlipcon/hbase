@@ -205,6 +205,17 @@
         <enabled>true</enabled>
       </releases>
     </repository>
+    <repository>
+      <id>temp-todd</id>
+      <name>high-scale-lib in a repo</name>
+      <url>http://people.apache.org/~todd/repo/</url>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+    </repository>
   </repositories>
 
 
@@ -443,8 +454,7 @@
     <compileSource>1.6</compileSource>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <hbase.version>0.21.0-SNAPSHOT</hbase.version>
-    <hadoop.version>0.20.2-with-200-826</hadoop.version>
-
+    <hadoop.version>0.20.2-CDH3b2-SNAPSHOT</hadoop.version>
     <commons-cli.version>1.2</commons-cli.version>
     <commons-logging.version>1.1.1</commons-logging.version>
     <jetty.version>6.1.24</jetty.version>
