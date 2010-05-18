@@ -838,7 +838,7 @@ public class HMaster extends Thread implements HConstants, HMasterInterface,
               data.getValue(CATALOG_FAMILY, REGIONINFO_QUALIFIER));
           if (Bytes.equals(info.getTableDesc().getName(), tableName)) {
             byte [] value = data.getValue(CATALOG_FAMILY, SERVER_QUALIFIER);
-            if (value != null) {
+            if (value != null && value.length > 0) {
               HServerAddress server = new HServerAddress(Bytes.toString(value));
               result.add(new Pair<HRegionInfo,HServerAddress>(info, server));
             }
