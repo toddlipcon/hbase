@@ -81,8 +81,8 @@ public class HBaseRPC {
   protected static final Log LOG =
     LogFactory.getLog("org.apache.hadoop.ipc.HbaseRPC");
   
-  private static Map<String, BinnedHistogram<Long>> callHistogramMap =
-	PerfCounters.createLazyHistogramMap("hbase.rpc.", Binner.SHORT_TIME_LOG_BINS);
+  private static Map<String, BinnedHistogram<Long>> clientCallHistogramMap =
+	PerfCounters.createLazyHistogramMap("hbase.rpc.client.", Binner.SHORT_TIME_LOG_BINS);
   
   
 
@@ -253,7 +253,7 @@ public class HBaseRPC {
     public Object invoke(Object proxy, Method method, Object[] args)
         throws Throwable {
       final boolean logDebug = LOG.isDebugEnabled();      
-      BinnedHistogram<Long> hist = getCallHistogram(method.getName());
+      BinnedHistogram<Long> hist = getClientCallHistogram(method.getName());
       
       long startTime = 0;
       if (hist != null || logDebug) {
@@ -383,8 +383,8 @@ public class HBaseRPC {
     }
   }
 
-  public static BinnedHistogram<Long> getCallHistogram(String name) {
-	return callHistogramMap.get(name);
+  static BinnedHistogram<Long> getClientCallHistogram(String name) {
+	return clientCallHistogramMap.get(name);
   }
 
   /**
