@@ -63,6 +63,8 @@ import org.apache.hadoop.hbase.HServerInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.RemoteExceptionHandler;
+import org.apache.hadoop.hbase.perf.BinnedLongHistogram;
+import org.apache.hadoop.hbase.perf.PerfCounters;
 import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.Store;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -138,7 +140,14 @@ public class HLog implements HConstants, Syncable {
   private int initialReplication;    // initial replication factor of SequenceFile.writer
   private Method getNumCurrentReplicas; // refers to DFSOutputStream.getNumCurrentReplicas
   final static Object [] NO_ARGS = new Object []{};
-
+  
+  private static final BinnedLongHistogram HLOG_SYNC_HISTOGRAM =
+	new BinnedLongHistogram(0, 1, 5000);
+  static {
+	PerfCounters.get().addHistogram("hlog.sync.time", HLOG_SYNC_HISTOGRAM);
+  }
+		
+  
   // used to indirectly tell syncFs to force the sync
   private boolean forceSync = false;
 
@@ -949,7 +958,9 @@ public class HLog implements HConstants, Syncable {
         try {
           long now = System.currentTimeMillis();
           this.writer.sync();
-          syncTime += System.currentTimeMillis() - now;
+          long endTime = System.currentTimeMillis();
+          HLOG_SYNC_HISTOGRAM.incr(endTime - now);
+          syncTime += (endTime - now);
           syncOps++;
           this.forceSync = false;
           this.unflushedEntries.set(0);
