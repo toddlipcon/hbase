@@ -19,7 +19,6 @@ package org.apache.hadoop.hbase.perf;
 
 
 import java.io.IOException;
-import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -30,6 +29,7 @@ import org.apache.commons.logging.LogFactory;
 
 
 
+@SuppressWarnings("unchecked")
 public class PerfCounters {
   static final Log LOG = LogFactory.getLog(PerfCounters.class);
   
@@ -42,11 +42,13 @@ public class PerfCounters {
 	return instance;
   }
   
-  public void addHistogram(String key, BinnedHistogram histogram) {
-	BinnedHistogram putResult = histograms.putIfAbsent(key, histogram);
+  public <K> BinnedHistogram<K> addHistogram(String key, BinnedHistogram<K> histogram) {
+	BinnedHistogram<?> putResult = histograms.putIfAbsent(key, histogram);
 	if (putResult != null) {
 	  LOG.warn("Already initialized histogram " + key, new Exception());
+	
 	}
+	return histogram;
   }
 
   public BinnedHistogram getHistogram(String key) {

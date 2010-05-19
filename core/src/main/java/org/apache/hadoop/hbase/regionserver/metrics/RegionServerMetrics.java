@@ -23,6 +23,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.io.hfile.HFile;
 import org.apache.hadoop.hbase.metrics.MetricsRate;
+import org.apache.hadoop.hbase.perf.MetricRateWrapper;
 import org.apache.hadoop.hbase.regionserver.wal.HLog;
 import org.apache.hadoop.hbase.util.Strings;
 import org.apache.hadoop.metrics.MetricsContext;
@@ -55,7 +56,7 @@ public class RegionServerMetrics implements Updater {
   private final RegionServerStatistics statistics;
 
   public final MetricsTimeVaryingRate atomicIncrementTime =
-      new MetricsTimeVaryingRate("atomicIncrementTime", registry);
+      new MetricRateWrapper("atomicIncrementTime", registry);
 
   /**
    * Count of regions carried by this regionserver
@@ -120,19 +121,19 @@ public class RegionServerMetrics implements Updater {
    * filesystem read latency
    */
   public final MetricsTimeVaryingRate fsReadLatency =
-    new MetricsTimeVaryingRate("fsReadLatency", registry);
+    new MetricRateWrapper("fsReadLatency", registry);
 
   /**
    * filesystem write latency
    */
   public final MetricsTimeVaryingRate fsWriteLatency =
-    new MetricsTimeVaryingRate("fsWriteLatency", registry);
+    new MetricRateWrapper("fsWriteLatency", registry);
 
   /**
    * filesystem sync latency
    */
   public final MetricsTimeVaryingRate fsSyncLatency =
-    new MetricsTimeVaryingRate("fsSyncLatency", registry);
+    new MetricRateWrapper("fsSyncLatency", registry);
 
   public RegionServerMetrics() {
     MetricsContext context = MetricsUtil.getContext("hbase");
