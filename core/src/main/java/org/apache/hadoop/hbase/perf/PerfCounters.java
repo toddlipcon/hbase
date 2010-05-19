@@ -33,8 +33,8 @@ import org.apache.commons.logging.LogFactory;
 public class PerfCounters {
   static final Log LOG = LogFactory.getLog(PerfCounters.class);
   
-  final ConcurrentMap<String, BinnedLongHistogram> histograms =
-	new ConcurrentHashMap<String, BinnedLongHistogram>();
+  final ConcurrentMap<String, BinnedHistogram> histograms =
+	new ConcurrentHashMap<String, BinnedHistogram>();
   
   static PerfCounters instance = new PerfCounters();
     
@@ -42,19 +42,19 @@ public class PerfCounters {
 	return instance;
   }
   
-  public void addHistogram(String key, BinnedLongHistogram histogram) {
-	BinnedLongHistogram putResult = histograms.putIfAbsent(key, histogram);
+  public void addHistogram(String key, BinnedHistogram histogram) {
+	BinnedHistogram putResult = histograms.putIfAbsent(key, histogram);
 	if (putResult != null) {
 	  LOG.warn("Already initialized histogram " + key, new Exception());
 	}
   }
 
-  public BinnedLongHistogram getHistogram(String key) {
+  public BinnedHistogram getHistogram(String key) {
 	return histograms.get(key);
   }
   
   public void dump(PrintWriter out) throws IOException { 
-	for (Map.Entry<String, BinnedLongHistogram> entry :
+	for (Map.Entry<String, BinnedHistogram> entry :
 	  		histograms.entrySet()) {
 	  out.print(entry.getKey());
 	  out.print(":\n");

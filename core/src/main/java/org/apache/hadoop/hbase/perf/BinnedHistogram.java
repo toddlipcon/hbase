@@ -17,38 +17,28 @@
  */
 package org.apache.hadoop.hbase.perf;
 
-import java.io.PrintStream;
 import java.io.PrintWriter;
 
 import org.cliffc.high_scale_lib.Counter;
 
-public class BinnedLongHistogram {
-  private long minVal;
-  private int numBins;
-  private long binWidth;
+public class BinnedHistogram<K> {
   private Counter[] bins;
+  private Binner<K> binner;
 
-  public BinnedLongHistogram(long minVal, long binWidth, int numBins) {
-    this.minVal = minVal;
-    this.numBins = numBins;
-    this.binWidth = binWidth;
-    this.bins = new Counter[numBins + 2]; // 2 for <min, >max
+  public BinnedHistogram(Binner<K> binner) {
+	this.binner = binner;
+    this.bins = new Counter[binner.getNumBins()];
     for (int i = 0; i < bins.length; i++) {
   	  bins[i] = new Counter();
     }
   }
   
-  public void incr(long value) {
-    bins[binForValue(value)].increment();
+  public void incr(K value) {
+    bins[binner.getBin(value)].increment();
   }
   
-  public void incr(long value, long delta) {
-    bins[binForValue(value)].add(delta);
-  }
-  
-  private int binForValue(long value) {
-    if (value < minVal) return 0;
-    return Math.min((int)((value - minVal) / binWidth), numBins) + 1;
+  public void incr(K value, long delta) {
+    bins[binner.getBin(value)].add(delta);
   }
   
   public void clear() {
@@ -77,18 +67,14 @@ public class BinnedLongHistogram {
 
   public void dump(PrintWriter out) {
 	long snap[] = snapshot();
-	assert snap.length == numBins + 2;
+	assert snap.length == binner.getNumBins();
 	for (int bin = 0; bin < snap.length; bin++) {
-	  if (bin == 0) {
-		out.print("<" + minVal);
-	  } else if (bin == numBins + 1) {
-		out.print(">" + (minVal + numBins * binWidth));
-	  } else {
-		long binMin = (bin - 1)*binWidth + minVal;
-		out.print(binMin + "-" + (binMin + binWidth));
-	  }
+	  if (snap[bin] == 0) continue;
+	  out.print(binner.getBinLabel(bin));
+	  out.print(": ");
+	  
 	  out.print(": ");
 	  out.println(snap[bin]);	  
 	}
-  } 
+  }
 }

@@ -63,7 +63,8 @@ import org.apache.hadoop.hbase.HServerInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.RemoteExceptionHandler;
-import org.apache.hadoop.hbase.perf.BinnedLongHistogram;
+import org.apache.hadoop.hbase.perf.BinnedHistogram;
+import org.apache.hadoop.hbase.perf.Binner;
 import org.apache.hadoop.hbase.perf.PerfCounters;
 import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.Store;
@@ -141,8 +142,9 @@ public class HLog implements HConstants, Syncable {
   private Method getNumCurrentReplicas; // refers to DFSOutputStream.getNumCurrentReplicas
   final static Object [] NO_ARGS = new Object []{};
   
-  private static final BinnedLongHistogram HLOG_SYNC_HISTOGRAM =
-	new BinnedLongHistogram(0, 1, 5000);
+  private static final BinnedHistogram<Long> HLOG_SYNC_HISTOGRAM =
+	//new BinnedHistogram<Long>(new Binner.LinearLongBinner(0, 1, 5000));
+	new BinnedHistogram<Long>(new Binner.LogLongBinner(1, 1.1, 150));
   static {
 	PerfCounters.get().addHistogram("hlog.sync.time", HLOG_SYNC_HISTOGRAM);
   }
