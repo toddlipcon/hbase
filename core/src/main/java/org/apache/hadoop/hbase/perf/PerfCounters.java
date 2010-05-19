@@ -21,6 +21,7 @@ package org.apache.hadoop.hbase.perf;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -60,8 +61,10 @@ public class PerfCounters {
   }
   
   public void dump(PrintWriter out) throws IOException { 
+	TreeMap<String, BinnedHistogram> sorted =
+	  new TreeMap<String, BinnedHistogram>(histograms);
 	for (Map.Entry<String, BinnedHistogram> entry :
-	  		histograms.entrySet()) {
+	  		sorted.entrySet()) {
 	  out.print(entry.getKey());
 	  out.print(":\n");
 	  entry.getValue().dump(out);
