@@ -26,6 +26,10 @@ import java.util.concurrent.ConcurrentMap;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.conf.Configuration;
+
+import com.google.common.base.Function;
+import com.google.common.collect.MapMaker;
 
 
 
@@ -62,5 +66,17 @@ public class PerfCounters {
 	  out.print(":\n");
 	  entry.getValue().dump(out);
 	}
+  }
+
+  public static Map<String, BinnedHistogram<Long>> createLazyHistogramMap(
+	  final String prefix,
+	  final Binner<Long> binner) {
+	return new MapMaker().makeComputingMap(
+		new Function<String, BinnedHistogram<Long>>() {
+		  public BinnedHistogram<Long> apply(String suffix) {
+			String key = prefix + suffix;
+			return get().addHistogram(key, new BinnedHistogram<Long>(binner));
+		  }
+		});
   }
 }

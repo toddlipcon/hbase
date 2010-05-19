@@ -9,6 +9,11 @@ public interface Binner<K> {
   public int getBin(K value);
   public String getBinLabel(int bin);
 
+  /**
+   * Logarithmic bins suitable for things like RPC that usually are short
+   * but may extend into second range
+   */
+  final Binner<Long> SHORT_TIME_LOG_BINS = new Binner.LogLongBinner(1, 1.13, 150);
   
   public static class LinearLongBinner implements Binner<Long> {
     private final long minVal;

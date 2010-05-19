@@ -26,6 +26,9 @@ import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.client.RetriesExhaustedException;
 import org.apache.hadoop.hbase.io.HbaseObjectWritable;
+import org.apache.hadoop.hbase.perf.BinnedHistogram;
+import org.apache.hadoop.hbase.perf.Binner;
+import org.apache.hadoop.hbase.perf.PerfCounters;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.ipc.VersionedProtocol;
 import org.apache.hadoop.net.NetUtils;
@@ -77,6 +80,11 @@ public class HBaseRPC {
   // blanket enabling DEBUG on the o.a.h.h. package.
   protected static final Log LOG =
     LogFactory.getLog("org.apache.hadoop.ipc.HbaseRPC");
+  
+  private static Map<String, BinnedHistogram<Long>> callHistogramMap =
+	PerfCounters.createLazyHistogramMap("hbase.rpc.", Binner.SHORT_TIME_LOG_BINS);
+  
+  
 
   private HBaseRPC() {
     super();
@@ -244,16 +252,25 @@ public class HBaseRPC {
 
     public Object invoke(Object proxy, Method method, Object[] args)
         throws Throwable {
-      final boolean logDebug = LOG.isDebugEnabled();
+      final boolean logDebug = LOG.isDebugEnabled();      
+      BinnedHistogram<Long> hist = getCallHistogram(method.getName());
+      
       long startTime = 0;
-      if (logDebug) {
-        startTime = System.currentTimeMillis();
+      if (hist != null || logDebug) {
+    	startTime = System.currentTimeMillis();
       }
       HbaseObjectWritable value = (HbaseObjectWritable)
         client.call(new Invocation(method, args), address, ticket);
-      if (logDebug) {
-        long callTime = System.currentTimeMillis() - startTime;
-        LOG.debug("Call: " + method.getName() + " " + callTime);
+      
+      long callTime = 0;
+      if (hist != null || logDebug) {
+    	callTime = System.currentTimeMillis() - startTime;
+        if (logDebug) {
+          LOG.debug("Call: " + method.getName() + " " + callTime);
+        }
+        if (hist != null) {
+      	  hist.incr(callTime);
+        }
       }
       return value.get();
     }
@@ -364,6 +381,10 @@ public class HBaseRPC {
         // IGNORE
       }
     }
+  }
+
+  public static BinnedHistogram<Long> getCallHistogram(String name) {
+	return callHistogramMap.get(name);
   }
 
   /**
