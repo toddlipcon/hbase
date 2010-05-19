@@ -214,7 +214,7 @@
       <name>high-scale-lib in a repo</name>
       <url>http://people.apache.org/~todd/repo/</url>
       <snapshots>
-        <enabled>false</enabled>
+        <enabled>true</enabled>
       </snapshots>
       <releases>
         <enabled>true</enabled>
