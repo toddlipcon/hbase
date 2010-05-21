@@ -3,6 +3,10 @@ package org.apache.hadoop.hbase.regionserver;
 import java.util.LinkedList;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.apache.hadoop.hbase.perf.BinnedHistogram;
+import org.apache.hadoop.hbase.perf.Binner;
+import org.apache.hadoop.hbase.perf.PerfCounters;
+
 /**
  * Manages the read/write consistency within memstore. This provides
  * an interface for readers to determine what entries to ignore, and
@@ -16,6 +20,11 @@ public class ReadWriteConsistencyControl {
   private final LinkedList<WriteEntry> writeQueue =
       new LinkedList<WriteEntry>();
 
+  private static final BinnedHistogram<Long> SPIN_HISTOGRAM =
+	PerfCounters.get().addHistogram("rwcc.spin.count",
+		new BinnedHistogram<Long>(new Binner.LinearLongBinner(0, 1, 100)));
+
+  
   private static final ThreadLocal<Long> perThreadReadPoint =
       new ThreadLocal<Long>();
 
@@ -79,7 +88,7 @@ public class ReadWriteConsistencyControl {
     while (memstoreRead.get() < e.getWriteNumber()) {
       spun++;
     }
-    // Could potentially expose spun as a metric
+    SPIN_HISTOGRAM.incr((long)spun);
   }
 
   public long memstoreReadPoint() {

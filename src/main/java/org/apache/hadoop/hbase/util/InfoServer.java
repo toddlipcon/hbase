@@ -20,6 +20,7 @@
 
 package org.apache.hadoop.hbase.util;
 
+import org.apache.hadoop.hbase.perf.PerfServlet;
 import org.apache.hadoop.http.HttpServer;
 import org.mortbay.jetty.handler.ContextHandlerCollection;
 import org.mortbay.jetty.servlet.Context;
@@ -79,6 +80,12 @@ public class InfoServer extends HttpServer {
       logContext.addServlet(DefaultServlet.class, "/");
       defaultContexts.put(logContext, true);
     }
+  }
+  
+  @Override
+  protected void addDefaultServlets() {
+	super.addDefaultServlets();
+	addServlet("perf", "/perf", PerfServlet.class);
   }
 
   /**

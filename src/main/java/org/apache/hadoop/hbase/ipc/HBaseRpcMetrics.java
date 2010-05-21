@@ -22,6 +22,7 @@ package org.apache.hadoop.hbase.ipc;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hbase.perf.MetricRateWrapper;
 import org.apache.hadoop.metrics.MetricsContext;
 import org.apache.hadoop.metrics.MetricsRecord;
 import org.apache.hadoop.metrics.MetricsUtil;
@@ -68,8 +69,10 @@ public class HBaseRpcMetrics implements Updater {
    */
   public final MetricsRegistry registry = new MetricsRegistry();
 
-  public MetricsTimeVaryingRate rpcQueueTime = new MetricsTimeVaryingRate("RpcQueueTime", registry);
-  public MetricsTimeVaryingRate rpcProcessingTime = new MetricsTimeVaryingRate("RpcProcessingTime", registry);
+  public MetricsTimeVaryingRate rpcQueueTime = new MetricRateWrapper(
+	  "RpcQueueTime", registry);
+  public MetricsTimeVaryingRate rpcProcessingTime = new MetricRateWrapper(
+	  "RpcProcessingTime", registry);
 
   //public Map <String, MetricsTimeVaryingRate> metricsList = Collections.synchronizedMap(new HashMap<String, MetricsTimeVaryingRate>());
 
@@ -78,7 +81,7 @@ public class HBaseRpcMetrics implements Updater {
     return (MetricsTimeVaryingRate) registry.get(key);
   }
   private MetricsTimeVaryingRate create(String key) {
-    return new MetricsTimeVaryingRate(key, this.registry);
+    return new MetricRateWrapper(key, this.registry);
   }
 
   public synchronized void inc(String name, int amt) {

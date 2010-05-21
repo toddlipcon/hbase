@@ -63,6 +63,9 @@ import org.apache.hadoop.hbase.HServerInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.RemoteExceptionHandler;
+import org.apache.hadoop.hbase.perf.BinnedHistogram;
+import org.apache.hadoop.hbase.perf.Binner;
+import org.apache.hadoop.hbase.perf.PerfCounters;
 import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.ClassSize;
@@ -138,7 +141,15 @@ public class HLog implements HConstants, Syncable {
   private int initialReplication;    // initial replication factor of SequenceFile.writer
   private Method getNumCurrentReplicas; // refers to DFSOutputStream.getNumCurrentReplicas
   final static Object [] NO_ARGS = new Object []{};
-
+  
+  private static final BinnedHistogram<Long> HLOG_SYNC_HISTOGRAM =
+	PerfCounters.get().addHistogram("hlog.sync.time",
+		new BinnedHistogram<Long>(new Binner.LogLongBinner(1, 1.1, 150)));
+  
+  private static final BinnedHistogram<Long> HLOG_APPEND_HISTOGRAM =
+	PerfCounters.get().addHistogram("hlog.append.time",
+		new BinnedHistogram<Long>(new Binner.LogLongBinner(1, 1.1, 150)));  
+  
   // used to indirectly tell syncFs to force the sync
   private boolean forceSync = false;
 
@@ -945,7 +956,9 @@ public class HLog implements HConstants, Syncable {
         try {
           long now = System.currentTimeMillis();
           this.writer.sync();
-          syncTime += System.currentTimeMillis() - now;
+          long endTime = System.currentTimeMillis();
+          HLOG_SYNC_HISTOGRAM.incr(endTime - now);
+          syncTime += (endTime - now);
           syncOps++;
           this.forceSync = false;
           this.unflushedEntries.set(0);
@@ -1025,6 +1038,8 @@ public class HLog implements HConstants, Syncable {
       long took = System.currentTimeMillis() - now;
       writeTime += took;
       writeOps++;
+      HLOG_APPEND_HISTOGRAM.incr(took);
+      
       if (took > 1000) {
         LOG.warn(Thread.currentThread().getName() + " took " + took +
           "ms appending an edit to hlog; editcount=" + this.numEntries.get());
@@ -1095,8 +1110,10 @@ public class HLog implements HConstants, Syncable {
         HLogKey key = makeKey(regionName, tableName, logSeqId,
             System.currentTimeMillis());
         this.writer.append(new Entry(key, edit));
-        writeTime += System.currentTimeMillis() - now;
+        long took = System.currentTimeMillis() - now;
+        writeTime += took;
         writeOps++;
+        HLOG_APPEND_HISTOGRAM.incr(took);
         this.numEntries.incrementAndGet();
         Long seq = this.lastSeqWritten.get(regionName);
         if (seq != null && logSeqId >= seq.longValue()) {
