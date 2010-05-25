@@ -24,6 +24,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
@@ -474,6 +475,70 @@ public class Store implements HConstants, HeapSize {
    */
   NavigableMap<Long, StoreFile> getStorefiles() {
     return this.storefiles;
+  }
+
+  public void bulkLoadHFile(String srcPathStr) throws IOException {
+    Path srcPath = new Path(srcPathStr);
+    
+    HFile.Reader reader  = null;
+    try {
+      LOG.info("Validating hfile at " + srcPath + " for inclusion in "
+          + "store " + this + " region " + this.region);
+      reader = new HFile.Reader(srcPath.getFileSystem(conf),
+          srcPath, null, false);
+      reader.loadFileInfo();
+      
+      byte[] firstKey = reader.getFirstRowKey();
+      byte[] lastKey = reader.getLastRowKey();
+      
+      LOG.debug("HFile bounds: first=" + Bytes.toStringBinary(firstKey) +
+          " last=" + Bytes.toStringBinary(lastKey));
+      LOG.debug("Region bounds: first=" +
+          Bytes.toStringBinary(region.getStartKey()) +
+          " last=" + Bytes.toStringBinary(region.getEndKey()));
+      
+      HRegionInfo hri = region.getRegionInfo();
+      if (!hri.containsRange(firstKey, lastKey)) {
+        throw new WrongRegionException(
+            "Bulk load file " + srcPathStr + " does not fit inside region " 
+            + this.region);
+      }
+    } finally {
+      if (reader != null) reader.close();
+    }
+
+    // Move the file if it's on another filesystem
+    // TODO move this to a util somewhere
+    FileSystem srcFs = srcPath.getFileSystem(conf);
+    if (!srcFs.equals(fs)) {
+      LOG.info("File " + srcPath + " on different filesystem than " +
+          "destination store - moving to this filesystem.");
+      Path tmpDir = new Path(homedir, "_tmp");
+      Path tmpPath = new Path(tmpDir, srcPath.getName());
+      FileUtil.copy(srcFs, srcPath, fs, tmpPath, false, conf);
+      srcPath = tmpPath;
+    }
+    
+    Path dstPath = StoreFile.getRandomFilename(fs, homedir);
+    LOG.info("Renaming bulk load file " + srcPath + " to " + dstPath);
+    StoreFile.rename(fs, srcPath, dstPath);
+    
+    StoreFile sf = new StoreFile(fs, dstPath, blockcache,
+        this.conf, this.family.getBloomFilterType(), this.inMemory);
+    sf.createReader();
+    
+    LOG.info("Moved hfile " + srcPath + " into store directory " +
+        homedir + " - updating store file list.");
+    this.lock.writeLock().lock();
+    try {
+      // TODO millis below is totally bogus
+      this.storefiles.put(System.currentTimeMillis(), sf);
+      notifyChangedReadersObservers();
+    } finally {
+      this.lock.writeLock().unlock();
+    }
+    LOG.info("Successfully loaded store file " + srcPath
+        + " into store " + this + " (new location: " + dstPath + ")"); 
   }
 
   /**

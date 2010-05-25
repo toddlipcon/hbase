@@ -23,6 +23,7 @@ package org.apache.hadoop.hbase.io;
 import java.io.IOException;
 import java.io.DataInput;
 import java.io.DataOutput;
+import java.util.Arrays;
 import java.util.List;
 
 import org.apache.hadoop.io.BytesWritable;
@@ -252,5 +253,12 @@ implements WritableComparable<ImmutableBytesWritable> {
       results[i] = array.get(i);
     }
     return results;
+  }
+
+  /**
+   * Returns a copy of the bytes referred to by this writable
+   */
+  public byte[] copyBytes() {
+    return Arrays.copyOfRange(bytes, offset, length);
   }
 }

@@ -22,6 +22,7 @@ package org.apache.hadoop.hbase;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -49,6 +50,7 @@ import org.apache.hadoop.hbase.zookeeper.ZooKeeperWrapper;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.apache.hadoop.mapred.MiniMRCluster;
 import org.apache.zookeeper.ZooKeeper;
+import static org.junit.Assert.*;
 
 /**
  * Facility for testing HBase. Added as tool to abet junit4 testing.  Replaces
@@ -520,7 +522,13 @@ public class HBaseTestingUtility {
       Bytes.toBytes("uuu"), Bytes.toBytes("vvv"), Bytes.toBytes("www"),
       Bytes.toBytes("xxx"), Bytes.toBytes("yyy")
     };
-
+    return createMultiRegions(c, table, columnFamily, KEYS);
+  }
+  
+  public int createMultiRegions(final Configuration c, final HTable table,
+      final byte[] columnFamily, byte [][] startKeys)
+  throws IOException {
+    Arrays.sort(startKeys, Bytes.BYTES_COMPARATOR);
     HTable meta = new HTable(c, HConstants.META_TABLE_NAME);
     HTableDescriptor htd = table.getTableDescriptor();
     if(!htd.hasFamily(columnFamily)) {
@@ -531,13 +539,13 @@ public class HBaseTestingUtility {
     // setup already has the "<tablename>,,123456789" row with an empty start
     // and end key. Adding the custom regions below adds those blindly,
     // including the new start region from empty to "bbb". lg
-    List<byte[]> rows = getMetaTableRows();
+    List<byte[]> rows = getMetaTableRows(htd.getName());
     // add custom ones
     int count = 0;
-    for (int i = 0; i < KEYS.length; i++) {
-      int j = (i + 1) % KEYS.length;
+    for (int i = 0; i < startKeys.length; i++) {
+      int j = (i + 1) % startKeys.length;
       HRegionInfo hri = new HRegionInfo(table.getTableDescriptor(),
-        KEYS[i], KEYS[j]);
+        startKeys[i], startKeys[j]);
       Put put = new Put(hri.getRegionName());
       put.add(HConstants.CATALOG_FAMILY, HConstants.REGIONINFO_QUALIFIER,
         Writables.getBytes(hri));
@@ -574,6 +582,29 @@ public class HBaseTestingUtility {
     s.close();
     return rows;
   }
+  
+  /**
+   * Returns all rows from the .META. table for a given user table
+   *
+   * @throws IOException When reading the rows fails.
+   */
+  public List<byte[]> getMetaTableRows(byte[] tableName) throws IOException {
+    HTable t = new HTable(this.conf, HConstants.META_TABLE_NAME);
+    List<byte[]> rows = new ArrayList<byte[]>();
+    ResultScanner s = t.getScanner(new Scan());
+    for (Result result : s) {
+      HRegionInfo info = Writables.getHRegionInfo(
+          result.getValue(HConstants.CATALOG_FAMILY, HConstants.REGIONINFO_QUALIFIER));
+      HTableDescriptor desc = info.getTableDesc();
+      if (Bytes.compareTo(desc.getName(), tableName) == 0) {
+        LOG.info("getMetaTableRows: row -> " +
+            Bytes.toStringBinary(result.getRow()));
+        rows.add(result.getRow());
+      }
+    }
+    s.close();
+    return rows;
+  }
 
   /**
    * Starts a <code>MiniMRCluster</code> with a default number of
@@ -600,6 +631,8 @@ public class HBaseTestingUtility {
     mrCluster = new MiniMRCluster(servers,
       FileSystem.get(c).getUri().toString(), 1);
     LOG.info("Mini mapreduce cluster started");
+    c.set("mapred.job.tracker",
+        mrCluster.createJobConf().get("mapred.job.tracker"));
   }
 
   /**
@@ -610,6 +643,7 @@ public class HBaseTestingUtility {
     if (mrCluster != null) {
       mrCluster.shutdown();
     }
+    conf.set("mapred.job.tracker", "local");
     LOG.info("Mini mapreduce cluster stopped");
   }
 
@@ -745,5 +779,20 @@ public class HBaseTestingUtility {
 
   public FileSystem getTestFileSystem() throws IOException {
     return FileSystem.get(conf);
+  }
+
+  public void cleanupTestDir() throws IOException {
+    getTestDir().getFileSystem(conf).delete(getTestDir(), true);    
+  }
+
+  public void waitTableAvailable(byte[] table, long timeoutMillis)
+  throws InterruptedException, IOException {
+    HBaseAdmin admin = new HBaseAdmin(conf);
+    long startWait = System.currentTimeMillis();
+    while (!admin.isTableAvailable(table)) {
+      assertTrue("Timed out waiting for table " + Bytes.toStringBinary(table),
+          System.currentTimeMillis() - startWait < timeoutMillis);
+      Thread.sleep(500);
+    }
   }
 }

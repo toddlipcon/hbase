@@ -1069,12 +1069,25 @@ public class HFile {
 
     /**
      * @return First key in the file.  May be null if file has no entries.
+     * Note that this is not the first rowkey, but rather the byte form of
+     * the first KeyValue.
      */
     public byte [] getFirstKey() {
       if (blockIndex == null) {
         throw new RuntimeException("Block index not loaded");
       }
       return this.blockIndex.isEmpty()? null: this.blockIndex.blockKeys[0];
+    }
+    
+    /**
+     * @return the first row key, or null if the file is empty.
+     * TODO move this to StoreFile after Ryan's patch goes in
+     * to eliminate KeyValue here
+     */
+    public byte[] getFirstRowKey() {
+      byte[] firstKey = getFirstKey();
+      if (firstKey == null) return null;
+      return KeyValue.createKeyValueFromKey(firstKey).getRow();
     }
 
     /**
@@ -1089,12 +1102,25 @@ public class HFile {
 
     /**
      * @return Last key in the file.  May be null if file has no entries.
+     * Note that this is not the last rowkey, but rather the byte form of
+     * the last KeyValue.
      */
     public byte [] getLastKey() {
       if (!isFileInfoLoaded()) {
         throw new RuntimeException("Load file info first");
       }
       return this.blockIndex.isEmpty()? null: this.lastkey;
+    }
+    
+    /**
+     * @return the last row key, or null if the file is empty.
+     * TODO move this to StoreFile after Ryan's patch goes in
+     * to eliminate KeyValue here
+     */
+    public byte[] getLastRowKey() {
+      byte[] lastKey = getLastKey();
+      if (lastKey == null) return null;
+      return KeyValue.createKeyValueFromKey(lastKey).getRow();
     }
     
     /**

@@ -26,6 +26,7 @@ import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.DroppedSnapshotException;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
@@ -1890,6 +1891,24 @@ public class HRegion implements HConstants, HeapSize { // , Writable{
       }
     }
   }
+  
+  public void bulkLoadHFile(String hfilePath, byte[] familyName)
+  throws IOException {
+    // TODO - wtf, why is there this lock AND the splitsLock?
+    splitsAndClosesLock.readLock().lock();
+    try {
+      Store store = getStore(familyName);
+      if (store == null) {
+        throw new DoNotRetryIOException(
+            "No such column family " + Bytes.toStringBinary(familyName));
+      }
+      store.bulkLoadHFile(hfilePath);
+    } finally {
+      splitsAndClosesLock.readLock().unlock();
+    }
+    
+  }
+
 
   @Override
   public boolean equals(Object o) {

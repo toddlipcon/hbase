@@ -432,6 +432,7 @@
     <commons-logging.version>1.1.1</commons-logging.version>
     <jetty.version>6.1.14</jetty.version>
     <junit.version>4.8.1</junit.version>
+    <mockito-all.version>1.8.4</mockito-all.version>
     <log4j.version>1.2.15</log4j.version>
     <zookeeper.version>3.3.1</zookeeper.version>
 
@@ -526,6 +527,12 @@
         <groupId>junit</groupId>
         <artifactId>junit</artifactId>
         <version>${junit.version}</version>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.mockito</groupId>
+        <artifactId>mockito-all</artifactId>
+        <version>${mockito-all.version}</version>
         <scope>test</scope>
       </dependency>
     </dependencies>
@@ -689,6 +696,10 @@
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-all</artifactId>
     </dependency>
     <dependency>
       <groupId>org.apache.commons</groupId>
