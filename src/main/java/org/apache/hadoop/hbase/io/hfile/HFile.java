@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.SortedSet;
 
+import com.google.common.base.Preconditions;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.HelpFormatter;
@@ -60,6 +61,7 @@ import org.apache.hadoop.io.RawComparator;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.io.compress.Compressor;
 import org.apache.hadoop.io.compress.Decompressor;
+
 
 /**
  * File format for hbase.
@@ -1044,6 +1046,7 @@ public class HFile {
     private ByteBuffer decompress(final long offset, final int compressedSize,
       final int decompressedSize, final boolean pread)
     throws IOException {
+      Preconditions.checkState(istream != null);
       Decompressor decompressor = null;
       ByteBuffer buf = null;
       try {
@@ -1056,6 +1059,9 @@ public class HFile {
           new BoundedRangeFileInputStream(this.istream, offset, compressedSize,
             pread),
           decompressor, 0);
+        if (is == null) {
+          throw new IOException("Could not create decompression stream");
+        }
         buf = ByteBuffer.allocate(decompressedSize);
         IOUtils.readFully(is, buf.array(), 0, buf.capacity());
         is.close();

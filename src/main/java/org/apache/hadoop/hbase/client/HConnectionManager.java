@@ -31,6 +31,7 @@ import org.apache.hadoop.hbase.HServerAddress;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.MasterNotRunningException;
+import org.apache.hadoop.hbase.NotServingRegionException;
 import org.apache.hadoop.hbase.RemoteExceptionHandler;
 import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitor;
@@ -1109,12 +1110,16 @@ public class HConnectionManager {
             throw new NoServerForRegionException("Timed out trying to locate "+
                 "root region because: " + t.getMessage());
           }
-
+          if (!(t instanceof NotServingRegionException)) {
+            LOG.warn("Error contacting root region", t);
+          }
+          if (t instanceof RuntimeException) {
+            throw (RuntimeException)t;
+          }
+          
           // Sleep and retry finding root region.
           try {
-            if (LOG.isDebugEnabled()) {
-              LOG.debug("Root region location changed. Sleeping.");
-            }
+            LOG.info("Root region location changed. Sleeping.");
             Thread.sleep(getPauseTime(tries));
             if (LOG.isDebugEnabled()) {
               LOG.debug("Wake. Retry finding root region.");
