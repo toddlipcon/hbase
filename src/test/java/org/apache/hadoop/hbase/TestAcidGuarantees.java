@@ -36,7 +36,6 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.google.common.collect.Lists;
@@ -88,12 +87,16 @@ public class TestAcidGuarantees {
     byte targetFamilies[][];
     HTable table;
     AtomicLong numWritten = new AtomicLong();
+    static AtomicLong tsGen = new AtomicLong();
+    boolean uniqueTimestamps;
     
     public AtomicityWriter(TestContext ctx, byte targetRows[][],
-                           byte targetFamilies[][]) throws IOException {
+                           byte targetFamilies[][],
+                           boolean uniqueTimestamps) throws IOException {
       super(ctx);
       this.targetRows = targetRows;
       this.targetFamilies = targetFamilies;
+      this.uniqueTimestamps = uniqueTimestamps;
       table = new HTable(ctx.getConf(), TABLE_NAME);
     }
     public void doAnAction() throws Exception {
@@ -102,10 +105,12 @@ public class TestAcidGuarantees {
       Put p = new Put(targetRow); 
       rand.nextBytes(data);
 
+      long ts = uniqueTimestamps ? tsGen.getAndIncrement() :
+        System.currentTimeMillis();
       for (byte[] family : targetFamilies) {
         for (int i = 0; i < NUM_COLS_TO_CHECK; i++) {
           byte qualifier[] = Bytes.toBytes("col" + i);
-          p.add(family, qualifier, data);
+          p.add(family, qualifier, ts, data);
         }
       }
       table.put(p);
@@ -234,7 +239,8 @@ public class TestAcidGuarantees {
       int numWriters,
       int numGetters,
       int numScanners,
-      int numUniqueRows) throws Exception {
+      int numUniqueRows,
+      boolean uniqueTimestamps) throws Exception {
     createTableIfMissing();
     TestContext ctx = new TestContext(util.getConfiguration());
     
@@ -246,7 +252,7 @@ public class TestAcidGuarantees {
     List<AtomicityWriter> writers = Lists.newArrayList();
     for (int i = 0; i < numWriters; i++) {
       AtomicityWriter writer = new AtomicityWriter(
-          ctx, rows, FAMILIES);
+          ctx, rows, FAMILIES, uniqueTimestamps);
       writers.add(writer);
       ctx.addThread(writer);
     }
@@ -289,29 +295,27 @@ public class TestAcidGuarantees {
   public void testGetAtomicity() throws Exception {
     util.startMiniCluster(1);
     try {
-      runTestAtomicity(20000, 5, 5, 0, 3);
+      runTestAtomicity(20000, 5, 5, 0, 3, true);
     } finally {
       util.shutdownMiniCluster();
     }    
   }
 
   @Test
-  @Ignore("Currently not passing - see HBASE-2670")
-  public void testScanAtomicity() throws Exception {
+    public void testScanAtomicity() throws Exception {
     util.startMiniCluster(1);
     try {
-      runTestAtomicity(20000, 5, 0, 5, 3);
+      runTestAtomicity(20000, 5, 0, 5, 3, true);
     } finally {
       util.shutdownMiniCluster();
     }    
   }
 
   @Test
-  @Ignore("Currently not passing - see HBASE-2670")
   public void testMixedAtomicity() throws Exception {
     util.startMiniCluster(1);
     try {
-      runTestAtomicity(20000, 5, 2, 2, 3);
+      runTestAtomicity(20000, 5, 2, 2, 3, true);
     } finally {
       util.shutdownMiniCluster();
     }    
@@ -321,7 +325,7 @@ public class TestAcidGuarantees {
     Configuration c = HBaseConfiguration.create();
     TestAcidGuarantees test = new TestAcidGuarantees();
     test.setConf(c);
-    test.runTestAtomicity(5*60*1000, 5, 2, 2, 3);
+    test.runTestAtomicity(5*60*1000, 5, 2, 2, 3, true);
   }
 
   private void setConf(Configuration c) {
