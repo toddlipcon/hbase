@@ -312,29 +312,8 @@ public class ZooKeeperWrapper implements Watcher {
   }
 
   public boolean exists(String znode, boolean watch) {
-    try {
-      return zooKeeper.exists(getZNode(parentZNode, znode), watch?this:null) != null;
-    } catch (KeeperException.SessionExpiredException e) {
-      // if the session has expired try to reconnect to ZK, then perform query
-      try {
-        // TODO: ZK-REFACTOR: We should not reconnect - we should just quit and restart.
-        reconnectToZk();
-        return zooKeeper.exists(getZNode(parentZNode, znode), watch?this:null) != null;
-      } catch (IOException e1) {
-        LOG.error("Error reconnecting to zookeeper", e1);
-        throw new RuntimeException("Error reconnecting to zookeeper", e1);
-      } catch (KeeperException e1) {
-        LOG.error("Error reading after reconnecting to zookeeper", e1);
-        throw new RuntimeException("Error reading after reconnecting to zookeeper", e1);
-      } catch (InterruptedException e1) {
-        LOG.error("Error reading after reconnecting to zookeeper", e1);
-        throw new RuntimeException("Error reading after reconnecting to zookeeper", e1);
-      }
-    } catch (KeeperException e) {
-      return false;
-    } catch (InterruptedException e) {
-      return false;
-    }
+    return ZKAction.exists(znode)
+      .withWatcher(watch ? this : null).doOrThrowRTE(zooKeeper);
   }
 
   /** @return ZooKeeper used by this wrapper. */
@@ -403,13 +382,7 @@ public class ZooKeeperWrapper implements Watcher {
    * @param watcher Watcher to set on cluster state node
    */
   public void setClusterStateWatch() {
-    try {
-      zooKeeper.exists(clusterStateZNode, this);
-    } catch (InterruptedException e) {
-      LOG.warn("<" + instanceName + ">" + "Failed to check on ZNode " + clusterStateZNode, e);
-    } catch (KeeperException e) {
-      LOG.warn("<" + instanceName + ">" + "Failed to check on ZNode " + clusterStateZNode, e);
-    }
+    ZKAction.exists(clusterStateZNode).withWatcher(this).doOrThrowRTE(zooKeeper);
   }
 
   /**
@@ -475,14 +448,7 @@ public class ZooKeeperWrapper implements Watcher {
   }
 
   private HServerAddress readAddressOrThrow(String znode, Watcher watcher) throws IOException {
-    byte[] data;
-    try {
-      data = zooKeeper.getData(znode, watcher, null);
-    } catch (InterruptedException e) {
-      throw new IOException(e);
-    } catch (KeeperException e) {
-      throw new IOException(e);
-    }
+    byte[] data = ZKAction.getData(znode).withWatcher(watcher).doOrThrowIOE(zooKeeper);
 
     String addressString = Bytes.toString(data);
     LOG.debug("<" + instanceName + ">" + "Read ZNode " + znode + " got " + addressString);
