@@ -29,9 +29,12 @@ import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.Pair;
+import org.apache.hadoop.hbase.zookeeper.ZKMap;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWrapper;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.data.Stat;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -40,6 +43,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 
+import static org.junit.Assert.*;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -60,8 +64,8 @@ public class TestZooKeeper {
   public static void setUpBeforeClass() throws Exception {
     // Test we can first start the ZK cluster by itself
     TEST_UTIL.startMiniZKCluster();
-    TEST_UTIL.getConfiguration().setBoolean("dfs.support.append", true);
-    TEST_UTIL.startMiniCluster(2);
+    //TEST_UTIL.getConfiguration().setBoolean("dfs.support.append", true);
+    //TEST_UTIL.startMiniCluster(2);
     conf = TEST_UTIL.getConfiguration();
   }
 
@@ -78,7 +82,7 @@ public class TestZooKeeper {
    */
   @Before
   public void setUp() throws Exception {
-    TEST_UTIL.ensureSomeRegionServersAvailable(2);
+    //TEST_UTIL.ensureSomeRegionServersAvailable(2);
   }
 
   /**
@@ -193,5 +197,37 @@ public class TestZooKeeper {
     assertNull(zkw.getData("/l1/l2/l3", "l4"));
     zkw.deleteZNode("/l1");
     assertNull(zkw.getData("/l1", "l2"));
+  }
+  
+  @Test
+  public void testZKMap() throws Exception {
+    ZooKeeperWrapper zkw1 =
+      ZooKeeperWrapper.createInstance(conf, TestZooKeeper.class.getName());
+    ZooKeeper zk1 = zkw1.getZooKeeper();
+    ZooKeeperWrapper zkw2 =
+      ZooKeeperWrapper.createInstance(conf, TestZooKeeper.class.getName() + "_2");
+    ZooKeeper zk2 = zkw2.getZooKeeper();
+
+    byte[] data1 = Bytes.toBytes("hello world");
+    byte[] data2 = Bytes.toBytes("goodbye world");
+
+    zkw1.ensureExists("/mymap");
+    ZKMap zkm1 = new ZKMap(zk1, "/mymap", "zkm 1");
+    assertTrue(zkm1.putIfAbsent("hello", data1));
+
+    ZKMap zkm2 = new ZKMap(zk2, "/mymap", "zkm 2");
+    assertFalse(zkm2.putIfAbsent("hello", data1));
+    
+    zkm2.waitForSynchronization(1000);
+    assertArrayEquals(data1, zkm2.get("hello"));
+    
+    Pair<byte[], Stat> pairFrom1 = zkm1.getWithStat("hello");
+    Pair<byte[], Stat> pairFrom2 = zkm2.getWithStat("hello");
+    assertArrayEquals(data1, pairFrom2.getFirst());
+    assertTrue(zkm2.putIfUnchanged("hello", data2, pairFrom2.getSecond()));
+    assertFalse(zkm1.putIfUnchanged("hello", data2, pairFrom1.getSecond()));
+    zkm1.waitForSynchronization(1000);
+    assertArrayEquals(data2, zkm1.get("hello"));
+    assertArrayEquals(data2, zkm2.get("hello"));
   }
 }
