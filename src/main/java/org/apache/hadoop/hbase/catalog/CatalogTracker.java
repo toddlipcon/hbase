@@ -64,13 +64,15 @@ public class CatalogTracker {
   private final AtomicBoolean metaAvailable = new AtomicBoolean(false);
   private HServerAddress metaLocation;
 
-  private final int defaultTimeout;
+  private final long defaultTimeout;
 
   public static final byte [] ROOT_REGION =
     HRegionInfo.ROOT_REGIONINFO.getRegionName();
 
   public static final byte [] META_REGION =
     HRegionInfo.FIRST_META_REGIONINFO.getRegionName();
+
+  public static final long TIMEOUT_FOREVER = 0;
 
   /**
    * Constructs the catalog tracker.  Find current state of catalog tables and
@@ -83,7 +85,7 @@ public class CatalogTracker {
   public CatalogTracker(final ZooKeeperWatcher zk, final HConnection connection,
       final Abortable abortable)
   throws IOException {
-    this(zk, connection, abortable, 0);
+    this(zk, connection, abortable, TIMEOUT_FOREVER);
   }
 
   /**
@@ -96,7 +98,7 @@ public class CatalogTracker {
    * @throws IOException 
    */
   public CatalogTracker(final ZooKeeperWatcher zk, final HConnection connection,
-      final Abortable abortable, final int defaultTimeout)
+      final Abortable abortable, final long defaultTimeout)
   throws IOException {
     this.zookeeper = zk;
     this.connection = connection;
@@ -291,16 +293,20 @@ public class CatalogTracker {
   throws InterruptedException, IOException, NotAllMetaRegionsOnlineException {
     long stop = System.currentTimeMillis() + timeout;
     synchronized(metaAvailable) {
-      if(getMetaServerConnection(true) != null) {
-        return metaLocation;
-      }
-      while(!metaAvailable.get() &&
-          (timeout == 0 || System.currentTimeMillis() < stop)) {
-        metaAvailable.wait(timeout);
-      }
-      if(getMetaServerConnection(true) == null) {
-        throw new NotAllMetaRegionsOnlineException(
+      while (!metaAvailable.get()) {
+        if(getMetaServerConnection(true) != null) {
+          return metaLocation;
+        }
+        if (timeout == TIMEOUT_FOREVER || System.currentTimeMillis() < stop) {
+          if (timeout == TIMEOUT_FOREVER) {
+            metaAvailable.wait(1000);
+          } else {
+            metaAvailable.wait(Math.min(1000, timeout));
+          }
+        } else {
+          throw new NotAllMetaRegionsOnlineException(
             "Timed out (" + timeout + "ms)");
+        }
       }
       return metaLocation;
     }
@@ -362,6 +368,14 @@ public class CatalogTracker {
       } else {
         throw e;
       }
+    } catch (IOException e) {
+      if (e.toString().contains(
+            "Server is not yet accepting RPCs")) {
+        // TODO: make a new exception type like ServerNotReadyException
+        // Also OK
+      } else {
+        throw e;
+      }
     }
     return protocol;
   }
@@ -372,6 +386,12 @@ public class CatalogTracker {
       return metaServer.getRegionInfo(regionName) != null;
     } catch (NotServingRegionException e) {
       return false;
+    } catch (IOException ioe) {
+      if (ioe.toString().contains("Connection reset") ||
+          ioe.toString().contains("not yet accepting RPCs")) {
+        return false;
+      }
+      throw new RuntimeException(ioe);
     }
   }
 

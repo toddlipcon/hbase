@@ -562,6 +562,10 @@ public class HBaseRPC {
 
     @Override
     public Writable call(Writable param, long receivedTime) throws IOException {
+      if (!isAcceptingCalls()) {
+        throw new IOException("Server is not yet accepting RPCs");
+      }
+
       try {
         Invocation call = (Invocation)param;
         if(call.getMethodName() == null) {

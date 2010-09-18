@@ -211,9 +211,6 @@ implements HMasterInterface, HMasterRegionInterface, MasterServices, Server {
     this.zooKeeper =
       new ZooKeeperWatcher(conf, MASTER + "-" + getMasterAddress(), this);
 
-    this.clusterStarter = 0 ==
-      ZKUtil.getNumberOfChildren(zooKeeper, zooKeeper.rsZNode);
-
     /*
      * 3. Block on becoming the active master.
      * We race with other masters to write our address into ZooKeeper.  If we
@@ -225,7 +222,6 @@ implements HMasterInterface, HMasterRegionInterface, MasterServices, Server {
      */
     this.activeMasterManager = new ActiveMasterManager(zooKeeper, address, this);
     this.zooKeeper.registerListener(activeMasterManager);
-
 
     // If we're a backup master, stall until a primary to writes his address
     if (conf.getBoolean(HConstants.MASTER_TYPE_BACKUP,
@@ -245,7 +241,10 @@ implements HMasterInterface, HMasterRegionInterface, MasterServices, Server {
     }
 
     // Wait here until we are the active master
-    clusterStarter = activeMasterManager.blockUntilBecomingActiveMaster();
+    activeMasterManager.blockUntilBecomingActiveMaster();
+
+    this.clusterStarter = 0 ==
+      ZKUtil.getNumberOfChildren(zooKeeper, zooKeeper.rsZNode);
 
     /**
      * 4. We are active master now... go initialize components we need to run.
@@ -258,7 +257,7 @@ implements HMasterInterface, HMasterRegionInterface, MasterServices, Server {
     this.serverManager = new ServerManager(this, this);
 
     this.catalogTracker = new CatalogTracker(this.zooKeeper, this.connection,
-      this, conf.getInt("hbase.master.catalog.timeout", -1));
+      this, conf.getLong("hbase.master.catalog.timeout", CatalogTracker.TIMEOUT_FOREVER));
     this.catalogTracker.start();
 
     this.assignmentManager = new AssignmentManager(this, serverManager,
@@ -292,6 +291,11 @@ implements HMasterInterface, HMasterRegionInterface, MasterServices, Server {
     try {
       // start up all service threads.
       startServiceThreads();
+
+      if (this.clusterStarter) {
+        clusterStarterClearTransientState(this.assignmentManager);
+      }
+
       // wait for minimum number of region servers to be up
       this.serverManager.waitForMinServers();
       // start assignment of user regions, startup or failure
@@ -336,6 +340,13 @@ implements HMasterInterface, HMasterRegionInterface, MasterServices, Server {
     LOG.info("HMaster main thread exiting");
   }
 
+  private static void clusterStarterClearTransientState(final AssignmentManager am)
+  throws IOException, InterruptedException, KeeperException {
+    // Clean out current state of unassigned
+    am.cleanoutUnassigned();
+    am.unassignRoot();
+  }
+
   /*
    * Initializations we need to do if we are cluster starter.
    * @param starter
@@ -359,8 +370,7 @@ implements HMasterInterface, HMasterRegionInterface, MasterServices, Server {
       //       It seems that this method looks at active RSs but happens
       //       concurrently with when we expect them to be checking in
       mfs.splitLogAfterStartup(sm.getOnlineServers());
-      // Clean out current state of unassigned
-      am.cleanoutUnassigned();
+
       // assign the root region
       am.assignRoot();
       ct.waitForRoot();

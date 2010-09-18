@@ -891,7 +891,7 @@ public class HConnectionManager {
                 regionServer.getInetSocketAddress(), this.conf,
                 this.maxRPCAttempts, this.rpcTimeout);
           } catch (RemoteException e) {
-            LOG.warn("Remove exception connecting to RS", e);
+            LOG.warn("Remote exception connecting to RS", e);
             throw RemoteExceptionHandler.decodeRemoteException(e);
           }
           this.servers.put(regionServer.toString(), server);

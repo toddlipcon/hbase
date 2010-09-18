@@ -54,7 +54,7 @@ public interface HRegionInterface extends HBaseRPCProtocolVersion, Stoppable, Ab
    * @throws NotServingRegionException e
    */
   public HRegionInfo getRegionInfo(final byte [] regionName)
-  throws NotServingRegionException;
+    throws NotServingRegionException, IOException;
 
 
   /**

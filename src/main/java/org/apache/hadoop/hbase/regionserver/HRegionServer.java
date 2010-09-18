@@ -323,6 +323,8 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
         .getPort(), conf.getInt("hbase.regionserver.handler.count", 10), false,
         conf);
     this.server.setErrorHandler(this);
+    this.server.startHandlers();
+
     // Address is giving a default IP for the moment. Will be changed after
     // calling the master.
     this.serverInfo = new HServerInfo(new HServerAddress(new InetSocketAddress(
@@ -1083,7 +1085,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
 
     // Start Server.  This service is like leases in that it internally runs
     // a thread.
-    this.server.start();
+    this.server.startAcceptingCalls();
     LOG.info("HRegionServer started at: "
         + this.serverInfo.getServerAddress().toString());
   }
@@ -2336,7 +2338,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
           .getConstructor(Configuration.class);
       return c.newInstance(conf2);
     } catch (Exception e) {
-      throw new RuntimeException("Failed construction of " + "Master: "
+      throw new RuntimeException("Failed construction of RegionServer: "
           + regionServerClass.toString(), e);
     }
   }

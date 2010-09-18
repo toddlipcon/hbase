@@ -114,30 +114,25 @@ class ActiveMasterManager extends ZooKeeperListener {
    *
    * This also makes sure that we are watching the master znode so will be
    * notified if another master dies.
-   * @return False if we did not start up this cluster, another
-   * master did, or if a problem (zookeeper, stop flag has been set on this
-   * Master)
    */
-  boolean blockUntilBecomingActiveMaster() {
-    boolean thisMasterStartedCluster = true;
+  void blockUntilBecomingActiveMaster() {
     // Try to become the active master, watch if there is another master
     try {
       if(ZKUtil.setAddressAndWatch(watcher, watcher.masterAddressZNode,
           address)) {
         // We are the master, return
         clusterHasActiveMaster.set(true);
-        return thisMasterStartedCluster;
+        return;
       }
     } catch (KeeperException ke) {
       master.abort("Received an unexpected KeeperException, aborting", ke);
-      return false;
+      return;
     }
     // There is another active master, this is not a cluster startup
     // and we must wait until the active master dies
     LOG.info("Another master is already the active master, waiting to become " +
       "the next active master");
     clusterHasActiveMaster.set(true);
-    thisMasterStartedCluster = false;
     synchronized(clusterHasActiveMaster) {
       while(clusterHasActiveMaster.get() && !master.isStopped()) {
         try {
@@ -148,12 +143,11 @@ class ActiveMasterManager extends ZooKeeperListener {
         }
       }
       if(master.isStopped()) {
-        return thisMasterStartedCluster;
+        return;
       }
       // Try to become active master again now that there is no active master
       blockUntilBecomingActiveMaster();
     }
-    return thisMasterStartedCluster;
   }
 
   /**

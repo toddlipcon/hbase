@@ -149,7 +149,8 @@ public class AssignmentManager extends ZooKeeperListener {
   }
 
   /**
-   * Reset all unassigned znodes.  Called on startup of master.
+   * Reset all unassigned znodes.  Called on startup of master when there
+   * are no region servers running.
    * Call {@link #assignAllUserRegions()} after root and meta have been assigned.
    * @throws IOException
    * @throws KeeperException
@@ -638,8 +639,18 @@ public class AssignmentManager extends ZooKeeperListener {
    * @throws KeeperException 
    */
   public void assignRoot() throws KeeperException {
-    RootLocationEditor.deleteRootLocation(this.master.getZooKeeper());
+    unassignRoot();
     assign(HRegionInfo.ROOT_REGIONINFO);
+  }
+
+  /**
+   * Remove the assignment of the ROOT region in ZK.
+   *
+   * This is used during master startup when it detects that there are
+   * no region servers, and thus ROOT is known to be unassigned.
+   */
+  public void unassignRoot() throws KeeperException {
+    RootLocationEditor.deleteRootLocation(this.master.getZooKeeper());
   }
 
   /**

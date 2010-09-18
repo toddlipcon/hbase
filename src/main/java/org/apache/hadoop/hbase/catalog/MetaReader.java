@@ -32,6 +32,7 @@ import org.apache.hadoop.hbase.HServerAddress;
 import org.apache.hadoop.hbase.HServerInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.NotAllMetaRegionsOnlineException;
+import org.apache.hadoop.hbase.NotServingRegionException;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Scan;
@@ -198,6 +199,12 @@ public class MetaReader {
           e.getCause().getMessage().contains("Connection reset by peer")) {
         // Treat this exception + message as unavailable catalog table. Catch it
         // and fall through to return a null
+      } else if (e.toString().contains("Server is not yet accepting RPCs")) {
+        // Also OK.
+        // TODO this has some shared code
+      } else if (e.toString().contains("NotServingRegionException")) {
+        System.err.println("==> NSRE");
+        // OK - null location
       } else {
         throw e;
       }

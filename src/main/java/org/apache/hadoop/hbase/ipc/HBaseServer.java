@@ -164,6 +164,8 @@ public abstract class HBaseServer {
   private Handler[] handlers = null;
   protected HBaseRPCErrorHandler errorHandler = null;
 
+  private volatile boolean acceptingCalls = false;
+
   /**
    * A convenience method to bind to a given address and report
    * better exceptions if the address is not a valid host.
@@ -1025,6 +1027,11 @@ public abstract class HBaseServer {
 
   /** Starts the service.  Must be called before any calls will be handled. */
   public synchronized void start() {
+    startHandlers();
+    startAcceptingCalls();
+  }
+
+  public synchronized void startHandlers() {
     responder.start();
     listener.start();
     handlers = new Handler[handlerCount];
@@ -1033,6 +1040,14 @@ public abstract class HBaseServer {
       handlers[i] = new Handler(i);
       handlers[i].start();
     }
+  }
+
+  public void startAcceptingCalls() {
+    acceptingCalls = true;
+  }
+
+  public boolean isAcceptingCalls() {
+    return acceptingCalls;
   }
 
   /** Stops the service.  No new calls will be handled after this is called. */
