@@ -72,6 +72,7 @@ import org.apache.hadoop.hbase.master.handler.TableAddFamilyHandler;
 import org.apache.hadoop.hbase.master.handler.TableDeleteFamilyHandler;
 import org.apache.hadoop.hbase.master.handler.TableModifyFamilyHandler;
 import org.apache.hadoop.hbase.master.metrics.MasterMetrics;
+import org.apache.hadoop.hbase.master.web.MasterStatusServlet;
 import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.replication.regionserver.Replication;
 import org.apache.hadoop.hbase.security.User;
@@ -579,6 +580,7 @@ implements HMasterInterface, HMasterRegionInterface, MasterServices, Server {
    if (port >= 0) {
      String a = this.conf.get("hbase.master.info.bindAddress", "0.0.0.0");
      this.infoServer = new InfoServer(MASTER, a, port, false);
+     this.infoServer.addServlet("index", "/status", MasterStatusServlet.class);
      this.infoServer.setAttribute(MASTER, this);
      this.infoServer.start();
     }
