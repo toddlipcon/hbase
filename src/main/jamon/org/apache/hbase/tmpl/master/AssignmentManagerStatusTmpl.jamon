@@ -1,0 +1,23 @@
+<%import>
+org.apache.hadoop.hbase.master.AssignmentManager;
+org.apache.hadoop.hbase.master.AssignmentManager.RegionState;
+java.util.Map;
+</%import>
+<%args>
+AssignmentManager assignmentManager;
+</%args>
+<%java>
+Map<String, RegionState> rit = assignmentManager.getRegionsInTransition();
+</%java>
+
+<h2>Regions in Transition</h2>
+<%if rit.isEmpty() %>
+No regions in transition.
+<%else>
+	<table>
+		<tr><th>Region</th><th>State</th></tr>
+		<%for Map.Entry<String, RegionState> entry : rit.entrySet() %>
+		<tr><td><% entry.getKey() %></td><td><% entry.getValue() %></td>
+		</%for>
+	</table>
+</%if>

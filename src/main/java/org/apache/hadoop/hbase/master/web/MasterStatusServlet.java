@@ -59,6 +59,7 @@ public class MasterStatusServlet extends HttpServlet {
     ServerName rootLocation = getRootLocationOrNull(master);
     ServerName metaLocation = master.getCatalogTracker().getMetaLocation();
     List<ServerName> servers = master.getServerManager().getOnlineServersList();
+    
 
     new StatusTmpl()
       .setFrags(frags)
