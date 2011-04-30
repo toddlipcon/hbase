@@ -46,6 +46,9 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.io.HeapSize;
 import org.apache.hadoop.hbase.master.SplitLogManager.TaskFinisher.Status;
+import org.apache.hadoop.hbase.monitoring.MonitoredTask;
+import org.apache.hadoop.hbase.monitoring.MonitoredTaskImpl;
+import org.apache.hadoop.hbase.monitoring.StatusMonitor;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.RemoteExceptionHandler;
@@ -70,7 +73,6 @@ import com.google.common.collect.Lists;
  * region to replay on startup. Delete the old log files when finished.
  */
 public class HLogSplitter {
-
   private static final String LOG_SPLITTER_IMPL = "hbase.hlog.splitter.impl";
 
   /**
@@ -106,6 +108,8 @@ public class HLogSplitter {
   // Wait/notify for when data has been produced by the reader thread,
   // consumed by the reader thread, or an exception occurred
   Object dataAvailable = new Object();
+  
+  private MonitoredTask status;
 
 
   /**
@@ -179,10 +183,23 @@ public class HLogSplitter {
         "An HLogSplitter instance may only be used once");
     hasSplit = true;
 
+    status = StatusMonitor.get().createStatus(
+        "Splitting logs in " + srcDir);
+    
+    try {
+      Thread.sleep(10000);
+    } catch (InterruptedException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+    }
+
     long startTime = EnvironmentEdgeManager.currentTimeMillis();
+    
+    status.setStatus("Determining files to split...");
     List<Path> splits = null;
     if (!fs.exists(srcDir)) {
       // Nothing to do
+      status.markComplete("No log directory existed to split.");
       return splits;
     }
     FileStatus[] logfiles = fs.listStatus(srcDir);
@@ -190,14 +207,20 @@ public class HLogSplitter {
       // Nothing to do
       return splits;
     }
-    LOG.info("Splitting " + logfiles.length + " hlog(s) in "
-        + srcDir.toString());
+    logAndReport("Splitting " + logfiles.length + " hlog(s) in "
+    + srcDir.toString());
     splits = splitLog(logfiles);
 
     splitTime = EnvironmentEdgeManager.currentTimeMillis() - startTime;
-    LOG.info("hlog file splitting completed in " + splitTime +
+    logAndReport("hlog file splitting completed in " + splitTime +
         " ms for " + srcDir.toString());
+    status.setProgress(1.0f);
     return splits;
+  }
+  
+  private void logAndReport(String msg) {
+    status.setStatus(msg);
+    LOG.info(msg);
   }
 
   /**
@@ -252,6 +275,7 @@ public class HLogSplitter {
 
     boolean skipErrors = conf.getBoolean("hbase.hlog.split.skip.errors", true);
 
+    long totalBytesToSplit = countTotalBytes(logfiles);
     splitSize = 0;
 
     outputSink.startWriterThreads(entryBuffers);
@@ -262,7 +286,7 @@ public class HLogSplitter {
        Path logPath = log.getPath();
         long logLength = log.getLen();
         splitSize += logLength;
-        LOG.debug("Splitting hlog " + (i++ + 1) + " of " + logfiles.length
+        logAndReport("Splitting hlog " + (i++ + 1) + " of " + logfiles.length
             + ": " + logPath + ", length=" + logLength);
         Reader in;
         try {
@@ -283,18 +307,36 @@ public class HLogSplitter {
           corruptedLogs.add(logPath);
           continue;
         }
+        
+        status.setProgress((float)splitSize / (totalBytesToSplit + 1));
       }
+      status.setStatus("Log splits complete. Checking for orphaned logs.");
+      
       if (fs.listStatus(srcDir).length > processedLogs.size()
           + corruptedLogs.size()) {
         throw new OrphanHLogAfterSplitException(
             "Discovered orphan hlog after split. Maybe the "
             + "HRegionServer was not dead when we started");
       }
+
+      status.setStatus("Archiving logs after completed split");
       archiveLogs(srcDir, corruptedLogs, processedLogs, oldLogDir, fs, conf);
     } finally {
+      status.setStatus("Finishing writing output logs and closing down.");
       splits = outputSink.finishWritingAndClose();
     }
     return splits;
+  }
+
+  /**
+   * @return the total size of the passed list of files.
+   */
+  private static long countTotalBytes(FileStatus[] logfiles) {
+    long ret = 0;
+    for (FileStatus stat : logfiles) {
+      ret += stat.getLen();
+    }
+    return ret;
   }
 
   /**
@@ -328,6 +370,18 @@ public class HLogSplitter {
     final Map<byte[], Object> logWriters = Collections.
     synchronizedMap(new TreeMap<byte[], Object>(Bytes.BYTES_COMPARATOR));
     boolean isCorrupted = false;
+    
+    Preconditions.checkState(status == null);
+    status = StatusMonitor.get().createStatus(
+        "Splitting log file " + logfile.getPath() +
+        "into a temporary staging area.");
+    
+    try {
+      Thread.sleep(10000);
+    } catch (InterruptedException e1) {
+      // TODO Auto-generated catch block
+      e1.printStackTrace();
+    }
 
     Object BAD_WRITER = new Object();
 
@@ -342,6 +396,7 @@ public class HLogSplitter {
     Path logPath = logfile.getPath();
     long logLength = logfile.getLen();
     LOG.info("Splitting hlog: " + logPath + ", length=" + logLength);
+    status.setStatus("Opening log file");
     Reader in = null;
     try {
       in = getReader(fs, logfile, conf, skipErrors);
@@ -351,12 +406,14 @@ public class HLogSplitter {
       isCorrupted = true;
     }
     if (in == null) {
+      status.markComplete("Was nothing to split in log file");
       LOG.warn("Nothing to split in log file " + logPath);
       return true;
     }
     long t = EnvironmentEdgeManager.currentTimeMillis();
     long last_report_at = t;
     if (reporter != null && reporter.progress() == false) {
+      status.markComplete("Failed: reporter.progress asked us to terminate");
       return false;
     }
     int editsCount = 0;
@@ -380,10 +437,12 @@ public class HLogSplitter {
         wap.w.append(entry);
         editsCount++;
         if (editsCount % interval == 0) {
+          status.setStatus("Split " + editsCount + " edits");
           long t1 = EnvironmentEdgeManager.currentTimeMillis();
           if ((t1 - last_report_at) > period) {
             last_report_at = t;
             if (reporter != null && reporter.progress() == false) {
+              status.markComplete("Failed: reporter.progress asked us to terminate");
               progress_failed = true;
               return false;
             }
@@ -416,10 +475,12 @@ public class HLogSplitter {
         wap.w.close();
         LOG.debug("Closed " + wap.p);
       }
-      LOG.info("processed " + editsCount + " edits across " + n + " regions" +
+      String msg = ("processed " + editsCount + " edits across " + n + " regions" +
           " threw away edits for " + (logWriters.size() - n) + " regions" +
           " log file = " + logPath +
           " is corrupted = " + isCorrupted);
+      LOG.info(msg);
+      status.markComplete(msg);
     }
     return true;
   }
@@ -1178,5 +1239,5 @@ public class HLogSplitter {
     CorruptedLogFileException(String s) {
       super(s);
     }
-  }
+  }  
 }

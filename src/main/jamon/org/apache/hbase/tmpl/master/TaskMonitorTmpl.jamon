@@ -1,0 +1,40 @@
+<%import>
+java.util.*;
+org.apache.hadoop.hbase.monitoring.*;
+</%import>
+<%args>
+StatusMonitor statusMonitor = StatusMonitor.get();
+</%args>
+<%java>
+long now = System.currentTimeMillis();
+List<MonitoredTask> tasks = statusMonitor.getTasks();
+
+</%java>
+<h2>Currently running tasks</h2>
+
+<%if tasks.isEmpty()%>
+No tasks currently running on this node.
+<%else>
+
+<table>
+<tr>
+  <th>Description</th>
+  <th>% Complete</th>
+  <th>Status</th>
+  <th>Age</th>
+</tr>
+<%for MonitoredTask task : tasks %>
+<tr class="task-monitor-<% task.getState() %>">
+  <td><% task.getDescription() %></td>
+  <td><% (int)(task.getProgress() * 100) %>%
+  <%if task.getCompletionTimestamp() != -1%>
+  (Completed <% (now - task.getCompletionTimestamp())/1000 %>s ago)
+  </%if>
+  </td>
+  <td><% task.getStatus() %></td>
+  <td><% (int)((now - task.getStartTime())/1000) %>s</td>
+</tr>
+</%for>
+</table>
+
+</%if>
