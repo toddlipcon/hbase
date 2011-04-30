@@ -2,6 +2,7 @@
   import="java.util.*"
   import="java.io.IOException"
   import="org.apache.hadoop.io.Text"
+  import="org.apache.hbase.tmpl.master.TaskMonitorTmpl"
   import="org.apache.hadoop.hbase.regionserver.HRegionServer"
   import="org.apache.hadoop.hbase.regionserver.HRegion"
   import="org.apache.hadoop.hbase.regionserver.metrics.RegionServerMetrics"
@@ -44,6 +45,11 @@
 <tr><td>Metrics</td><td><%= metrics.toString() %></td><td>RegionServer Metrics; file and heap sizes are in megabytes</td></tr>
 <tr><td>Zookeeper Quorum</td><td><%= regionServer.getZooKeeper().getQuorum() %></td><td>Addresses of all registered ZK servers</td></tr>
 </table>
+
+<h2>Running tasks</h2>
+<% 
+new TaskMonitorTmpl().render(out);
+%>
 
 <h2>Online Regions</h2>
 <% if (onlineRegions != null && onlineRegions.size() > 0) { %>

@@ -47,7 +47,6 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.io.HeapSize;
 import org.apache.hadoop.hbase.master.SplitLogManager.TaskFinisher.Status;
 import org.apache.hadoop.hbase.monitoring.MonitoredTask;
-import org.apache.hadoop.hbase.monitoring.MonitoredTaskImpl;
 import org.apache.hadoop.hbase.monitoring.StatusMonitor;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HTableDescriptor;
@@ -214,7 +213,6 @@ public class HLogSplitter {
     splitTime = EnvironmentEdgeManager.currentTimeMillis() - startTime;
     logAndReport("hlog file splitting completed in " + splitTime +
         " ms for " + srcDir.toString());
-    status.setProgress(1.0f);
     return splits;
   }
   
@@ -307,8 +305,6 @@ public class HLogSplitter {
           corruptedLogs.add(logPath);
           continue;
         }
-        
-        status.setProgress((float)splitSize / (totalBytesToSplit + 1));
       }
       status.setStatus("Log splits complete. Checking for orphaned logs.");
       

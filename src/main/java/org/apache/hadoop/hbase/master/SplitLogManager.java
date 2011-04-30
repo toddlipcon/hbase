@@ -36,7 +36,6 @@ import org.apache.hadoop.hbase.Chore;
 import org.apache.hadoop.hbase.Stoppable;
 import org.apache.hadoop.hbase.master.SplitLogManager.TaskFinisher.Status;
 import org.apache.hadoop.hbase.monitoring.MonitoredTask;
-import org.apache.hadoop.hbase.monitoring.MonitoredTaskImpl;
 import org.apache.hadoop.hbase.monitoring.StatusMonitor;
 import org.apache.hadoop.hbase.regionserver.SplitLogWorker;
 import org.apache.hadoop.hbase.regionserver.wal.HLogSplitter;
@@ -270,7 +269,6 @@ public class SplitLogManager extends ZooKeeperListener {
               + " scheduled=" + batch.installed
               + " done=" + batch.done
               + " error=" + batch.error);
-          status.setProgress((float)(batch.done + batch.error)/batch.installed);
           batch.wait(100);
           if (stopper.isStopped()) {
             LOG.warn("Stopped while waiting for log splits to be completed");

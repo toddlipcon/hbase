@@ -20,7 +20,6 @@
 package org.apache.hadoop.hbase.master.web;
 
 import java.io.IOException;
-
 import java.util.List;
 import java.util.Map;
 
@@ -69,6 +68,7 @@ public class MasterStatusServlet extends HttpServlet {
       .setServers(servers)
       .render(response.getWriter(),
           master, admin);
+    
   }
 
   private ServerName getRootLocationOrNull(HMaster master) {
