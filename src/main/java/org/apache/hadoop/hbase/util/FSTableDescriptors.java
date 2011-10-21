@@ -31,9 +31,6 @@ import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.TableDescriptors;
 import org.apache.hadoop.hbase.TableExistsException;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
 
 /**
  * Implementation of {@link TableDescriptors} that reads descriptors from the
@@ -42,8 +39,6 @@ import org.apache.commons.logging.LogFactory;
  * the filesystem or can be read and write.
  */
 public class FSTableDescriptors implements TableDescriptors {
-
-  private static final Log LOG = LogFactory.getLog(FSTableDescriptors.class);
   private final FileSystem fs;
   private final Path rootdir;
   private final boolean fsreadonly;
@@ -156,14 +151,7 @@ public class FSTableDescriptors implements TableDescriptors {
     Map<String, HTableDescriptor> htds = new TreeMap<String, HTableDescriptor>();
     List<Path> tableDirs = FSUtils.getTableDirs(fs, rootdir);
     for (Path d: tableDirs) {
-      HTableDescriptor htd = null;
-      try {
-
-        htd = get(d.getName());
-      } catch (FileNotFoundException fnfe) {
-        // inability of retrieving one HTD shouldn't stop getting the remaining
-        LOG.warn("Trouble retrieving htd", fnfe);
-      }
+      HTableDescriptor htd = get(d.getName());
       if (htd == null) continue;
       htds.put(d.getName(), htd);
     }
