@@ -105,7 +105,7 @@ public class TestOpenRegionHandler {
          HRegion.createHRegion(hri, HBaseTestingUtility.getTestDir(), HTU
             .getConfiguration(), htd);
     assertNotNull(region);
-    OpenRegionHandler handler = new OpenRegionHandler(server, rss, hri, htd) {
+    OpenRegionHandler handler = new OpenRegionHandler(server, rss, hri) {
       HRegion openRegion() {
         // Open region first, then remove znode as though it'd been hijacked.
         HRegion region = super.openRegion();

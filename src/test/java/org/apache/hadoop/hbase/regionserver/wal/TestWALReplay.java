@@ -165,7 +165,7 @@ public class TestWALReplay {
     wal3.setSequenceNumber(wal2.getSequenceNumber());
     try {
       final HRegion region = new HRegion(basedir, wal3, this.fs, this.conf, hri,
-        htd, null);
+          null);
       long seqid = region.initialize();
       assertTrue(seqid > wal3.getSequenceNumber());
 
@@ -193,11 +193,11 @@ public class TestWALReplay {
     final HRegionInfo hri = createBasic3FamilyHRegionInfo(tableNameStr);
     final Path basedir = new Path(this.hbaseRootDir, tableNameStr);
     deleteDir(basedir);
-    final HTableDescriptor htd = createBasic3FamilyHTD(tableNameStr);
+    HTableDescriptor htd = createBasic3FamilyHTD(tableNameStr);
     HRegion region2 = HRegion.createHRegion(hri,
         hbaseRootDir, this.conf, htd);
     HLog wal = createWAL(this.conf);
-    HRegion region = HRegion.openHRegion(hri, htd, wal, this.conf);
+    HRegion region = HRegion.openHRegion(hri, wal, this.conf);
     Path f =  new Path(basedir, "hfile");
     HFile.Writer writer =
       HFile.getWriterFactory(conf).createWriter(this.fs, f);
@@ -219,7 +219,7 @@ public class TestWALReplay {
         runWALSplit(newConf);
         HLog wal2 = createWAL(newConf);
         HRegion region2 = new HRegion(basedir, wal2, FileSystem.get(newConf),
-          newConf, hri, htd, null);
+          newConf, hri, null);
         long seqid2 = region2.initialize();
         assertTrue(seqid2 > -1);
 
@@ -258,7 +258,7 @@ public class TestWALReplay {
     // of the families during the load of edits so its seqid is not same as
     // others to test we do right thing when different seqids.
     HLog wal = createWAL(this.conf);
-    HRegion region = new HRegion(basedir, wal, this.fs, this.conf, hri, htd, null);
+    HRegion region = new HRegion(basedir, wal, this.fs, this.conf, hri, null);
     long seqid = region.initialize();
     // HRegionServer usually does this. It knows the largest seqid across all regions.
     wal.setSequenceNumber(seqid);
@@ -283,7 +283,7 @@ public class TestWALReplay {
     wal.close();
     runWALSplit(this.conf);
     HLog wal2 = createWAL(this.conf);
-    HRegion region2 = new HRegion(basedir, wal2, this.fs, this.conf, hri, htd, null) {
+    HRegion region2 = new HRegion(basedir, wal2, this.fs, this.conf, hri, null) {
       @Override
       protected boolean restoreEdit(Store s, KeyValue kv) {
         super.restoreEdit(s, kv);
@@ -318,7 +318,7 @@ public class TestWALReplay {
         // Make a new wal for new region open.
         HLog wal3 = createWAL(newConf);
         final AtomicInteger countOfRestoredEdits = new AtomicInteger(0);
-        HRegion region3 = new HRegion(basedir, wal3, newFS, newConf, hri, htd, null) {
+        HRegion region3 = new HRegion(basedir, wal3, newFS, newConf, hri, null) {
           @Override
           protected boolean restoreEdit(Store s, KeyValue kv) {
             boolean b = super.restoreEdit(s, kv);
@@ -410,7 +410,7 @@ public class TestWALReplay {
         final AtomicInteger flushcount = new AtomicInteger(0);
         try {
           final HRegion region =
-              new HRegion(basedir, newWal, newFS, newConf, hri, htd, null) {
+              new HRegion(basedir, newWal, newFS, newConf, hri, null) {
             protected boolean internalFlushcache(
                 final HLog wal, final long myseqid, MonitoredTask status)
             throws IOException {

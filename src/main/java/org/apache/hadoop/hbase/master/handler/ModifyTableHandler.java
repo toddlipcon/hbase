@@ -25,6 +25,8 @@ import java.util.List;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.Server;
+import org.apache.hadoop.hbase.catalog.MetaEditor;
+import org.apache.hadoop.hbase.master.AssignmentManager;
 import org.apache.hadoop.hbase.master.MasterServices;
 import org.apache.hadoop.hbase.util.Bytes;
 
@@ -45,10 +47,20 @@ public class ModifyTableHandler extends TableEventHandler {
   @Override
   protected void handleTableOperation(List<HRegionInfo> hris)
   throws IOException {
-    // Update descriptor
-    this.masterServices.getTableDescriptors().add(this.htd);
-  }
+    AssignmentManager am = this.masterServices.getAssignmentManager();
+    HTableDescriptor htd = am.getTableDescriptor(Bytes.toString(tableName));
+    if (htd == null) {
+      throw new IOException("Modify Table operation could not be completed as " +
+          "HTableDescritor is missing for table = "
+          + Bytes.toString(tableName));
+    }
+    // Update table descriptor in HDFS
 
+    HTableDescriptor updatedHTD = this.masterServices.getMasterFileSystem()
+        .updateTableDescriptor(this.htd);
+    // Update in-memory descriptor cache
+    am.updateTableDesc(Bytes.toString(tableName), updatedHTD);
+  }
   @Override
   public String toString() {
     String name = "UnknownServerName";

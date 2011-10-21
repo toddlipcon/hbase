@@ -664,7 +664,7 @@ public class SplitTransaction {
       this.splitdir, hri);
     HRegion r = HRegion.newHRegion(this.parent.getTableDir(),
       this.parent.getLog(), fs, this.parent.getConf(),
-      hri, this.parent.getTableDesc(), rsServices);
+      hri, rsServices);
     r.readRequestsCount.set(this.parent.getReadRequestsCount() / 2);
     r.writeRequestsCount.set(this.parent.getWriteRequestsCount() / 2);
     HRegion.moveInitialFilesIntoPlace(fs, regionDir, r.getRegionDir());

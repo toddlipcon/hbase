@@ -27,6 +27,8 @@ import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.InvalidFamilyOperationException;
 import org.apache.hadoop.hbase.Server;
+import org.apache.hadoop.hbase.catalog.MetaEditor;
+import org.apache.hadoop.hbase.master.AssignmentManager;
 import org.apache.hadoop.hbase.master.MasterServices;
 import org.apache.hadoop.hbase.util.Bytes;
 
@@ -46,8 +48,8 @@ public class TableAddFamilyHandler extends TableEventHandler {
   @Override
   protected void handleTableOperation(List<HRegionInfo> hris)
   throws IOException {
-    HTableDescriptor htd = this.masterServices.getTableDescriptors().
-                                      get(Bytes.toString(tableName));
+    AssignmentManager am = this.masterServices.getAssignmentManager();
+    HTableDescriptor htd = am.getTableDescriptor(Bytes.toString(tableName));
     byte [] familyName = familyDesc.getName();
     if (htd == null) {
       throw new IOException("Add Family operation could not be completed as " +
@@ -63,7 +65,7 @@ public class TableAddFamilyHandler extends TableEventHandler {
     htd = this.masterServices.getMasterFileSystem()
         .addColumn(tableName, familyDesc);
     // Update in-memory descriptor cache
-    this.masterServices.getTableDescriptors().add(htd);
+    am.updateTableDesc(Bytes.toString(tableName), htd);
   }
   @Override
   public String toString() {

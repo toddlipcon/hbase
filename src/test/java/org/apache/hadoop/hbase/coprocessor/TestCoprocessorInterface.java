@@ -248,7 +248,7 @@ public class TestCoprocessorInterface extends HBaseTestCase {
     //HRegionInfo info = new HRegionInfo(tableName, null, null, false);
     HRegion r = new HRegion(closedRegion.getTableDir(), closedRegion.getLog(),
         closedRegion.getFilesystem(), closedRegion.getConf(),
-        closedRegion.getRegionInfo(), closedRegion.getTableDesc(), null);
+        closedRegion.getRegionInfo(), null);
     r.initialize();
 
     // this following piece is a hack. currently a coprocessorHost

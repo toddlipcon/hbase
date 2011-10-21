@@ -26,7 +26,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HRegionInfo;
-import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.Server;
 import org.apache.hadoop.hbase.executor.EventHandler;
 import org.apache.hadoop.hbase.regionserver.HRegion;
@@ -46,7 +45,6 @@ public class OpenRegionHandler extends EventHandler {
   private final RegionServerServices rsServices;
 
   private final HRegionInfo regionInfo;
-  private final HTableDescriptor htd;
 
   // We get version of our znode at start of open process and monitor it across
   // the total open. We'll fail the open if someone hijacks our znode; we can
@@ -56,25 +54,23 @@ public class OpenRegionHandler extends EventHandler {
   private volatile int versionOfOfflineNode = -1;
 
   public OpenRegionHandler(final Server server,
-      final RegionServerServices rsServices, HRegionInfo regionInfo,
-      HTableDescriptor htd) {
-    this(server, rsServices, regionInfo, htd, EventType.M_RS_OPEN_REGION, -1);
+      final RegionServerServices rsServices, HRegionInfo regionInfo) {
+    this(server, rsServices, regionInfo, EventType.M_RS_OPEN_REGION, -1);
   }
   public OpenRegionHandler(final Server server,
       final RegionServerServices rsServices, HRegionInfo regionInfo,
-      HTableDescriptor htd, int versionOfOfflineNode) {
-    this(server, rsServices, regionInfo, htd, EventType.M_RS_OPEN_REGION,
+      int versionOfOfflineNode) {
+    this(server, rsServices, regionInfo, EventType.M_RS_OPEN_REGION,
         versionOfOfflineNode);
   }
 
   protected OpenRegionHandler(final Server server,
       final RegionServerServices rsServices, final HRegionInfo regionInfo,
-      final HTableDescriptor htd, EventType eventType,
+      EventType eventType,
       final int versionOfOfflineNode) {
     super(server, eventType);
     this.rsServices = rsServices;
     this.regionInfo = regionInfo;
-    this.htd = htd;
     this.versionOfOfflineNode = versionOfOfflineNode;
   }
 
@@ -208,6 +204,7 @@ public class OpenRegionHandler extends EventHandler {
     // Was there an exception opening the region?  This should trigger on
     // InterruptedException too.  If so, we failed.  Even if tickle opening fails
     // then it is a failure.
+    // TODO:is the following line correct? got modified by HBASE-451 but not following why...
     return ((!Thread.interrupted() && t.getException() == null) && tickleOpening);
   }
 
@@ -325,9 +322,8 @@ public class OpenRegionHandler extends EventHandler {
     try {
       // Instantiate the region.  This also periodically tickles our zk OPENING
       // state so master doesn't timeout this region in transition.
-      region = HRegion.openHRegion(this.regionInfo, this.htd,
-          this.rsServices.getWAL(), this.server.getConfiguration(),
-          this.rsServices,
+      region = HRegion.openHRegion(this.regionInfo, this.rsServices.getWAL(),
+        this.server.getConfiguration(), this.rsServices,
         new CancelableProgressable() {
           public boolean progress() {
             // We may lose the znode ownership during the open.  Currently its

@@ -20,7 +20,6 @@
 package org.apache.hadoop.hbase.regionserver.handler;
 
 import org.apache.hadoop.hbase.HRegionInfo;
-import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.Server;
 import org.apache.hadoop.hbase.regionserver.RegionServerServices;
 
@@ -31,14 +30,13 @@ import org.apache.hadoop.hbase.regionserver.RegionServerServices;
  */
 public class OpenMetaHandler extends OpenRegionHandler {
   public OpenMetaHandler(final Server server,
-      final RegionServerServices rsServices, HRegionInfo regionInfo,
-      final HTableDescriptor htd) {
-    this(server, rsServices, regionInfo, htd, -1);
+      final RegionServerServices rsServices, HRegionInfo regionInfo) {
+    this(server, rsServices, regionInfo, -1);
   }
   public OpenMetaHandler(final Server server,
       final RegionServerServices rsServices, HRegionInfo regionInfo,
-      final HTableDescriptor htd, int versionOfOfflineNode) {
-    super(server, rsServices, regionInfo, htd, EventType.M_RS_OPEN_META,
+      int versionOfOfflineNode) {
+    super(server, rsServices, regionInfo, EventType.M_RS_OPEN_META,
         versionOfOfflineNode);
   }
 }

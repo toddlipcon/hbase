@@ -24,7 +24,6 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -44,8 +43,6 @@ import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.NotAllMetaRegionsOnlineException;
 import org.apache.hadoop.hbase.Server;
 import org.apache.hadoop.hbase.ServerName;
-import org.apache.hadoop.hbase.TableDescriptors;
-import org.apache.hadoop.hbase.TableExistsException;
 import org.apache.hadoop.hbase.catalog.CatalogTracker;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.executor.ExecutorService;
@@ -128,8 +125,11 @@ public class TestCatalogJanitor {
     private final AssignmentManager asm;
 
     MockMasterServices(final Server server) throws IOException {
-      this.mfs = new MasterFileSystem(server, this, null);
+      this.mfs = new MasterFileSystem(server, null);
+      HTableDescriptor htd = new HTableDescriptor("table");
+      htd.addFamily(new HColumnDescriptor("family"));
       this.asm = Mockito.mock(AssignmentManager.class);
+      Mockito.when(asm.getTableDescriptor("table")).thenReturn(htd);
     }
 
     @Override
@@ -201,41 +201,6 @@ public class TestCatalogJanitor {
     @Override
     public boolean isStopped() {
       return false;
-    }
-
-    @Override
-    public TableDescriptors getTableDescriptors() {
-      return new TableDescriptors() {
-        @Override
-        public HTableDescriptor remove(String tablename) throws IOException {
-          // TODO Auto-generated method stub
-          return null;
-        }
-        
-        @Override
-        public Map<String, HTableDescriptor> getAll() throws IOException {
-          // TODO Auto-generated method stub
-          return null;
-        }
-        
-        @Override
-        public HTableDescriptor get(byte[] tablename)
-        throws TableExistsException, FileNotFoundException, IOException {
-          return get(Bytes.toString(tablename));
-        }
-        
-        @Override
-        public HTableDescriptor get(String tablename)
-        throws TableExistsException, FileNotFoundException, IOException {
-          return createHTableDescriptor();
-        }
-        
-        @Override
-        public void add(HTableDescriptor htd) throws IOException {
-          // TODO Auto-generated method stub
-          
-        }
-      };
     }
   }
 

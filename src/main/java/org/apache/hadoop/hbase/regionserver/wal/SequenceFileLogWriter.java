@@ -173,10 +173,7 @@ public class SequenceFileLogWriter implements HLog.Writer {
 
   @Override
   public void close() throws IOException {
-    if (this.writer != null) {
-      this.writer.close();
-      this.writer = null;
-    }
+    this.writer.close();
   }
 
   @Override

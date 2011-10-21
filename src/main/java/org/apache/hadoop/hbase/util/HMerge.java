@@ -55,7 +55,6 @@ import org.apache.hadoop.hbase.regionserver.wal.HLog;
  * a table by merging adjacent regions.
  */
 class HMerge {
-  // TODO: Where is this class used?  How does it relate to Merge in same package?
   static final Log LOG = LogFactory.getLog(HMerge.class);
   static final Random rand = new Random();
 
@@ -136,12 +135,12 @@ class HMerge {
     protected final Configuration conf;
     protected final FileSystem fs;
     protected final Path tabledir;
-    protected final HTableDescriptor htd;
     protected final HLog hlog;
     private final long maxFilesize;
 
 
-    protected Merger(Configuration conf, FileSystem fs, final byte [] tableName)
+    protected Merger(Configuration conf, FileSystem fs,
+      final byte [] tableName)
     throws IOException {
       this.conf = conf;
       this.fs = fs;
@@ -152,7 +151,6 @@ class HMerge {
           fs.makeQualified(new Path(conf.get(HConstants.HBASE_DIR))),
           Bytes.toString(tableName)
       );
-      this.htd = FSUtils.getTableDescriptor(this.fs, this.tabledir);
       Path logdir = new Path(tabledir, "merge_" + System.currentTimeMillis() +
           HConstants.HREGION_LOGDIR_NAME);
       Path oldLogDir = new Path(tabledir, HConstants.HREGION_OLDLOGDIR_NAME);
@@ -190,13 +188,13 @@ class HMerge {
       long nextSize = 0;
       for (int i = 0; i < info.length - 1; i++) {
         if (currentRegion == null) {
-          currentRegion = HRegion.newHRegion(tabledir, hlog, fs, conf, info[i],
-            this.htd, null);
+          currentRegion =
+            HRegion.newHRegion(tabledir, hlog, fs, conf, info[i], null);
           currentRegion.initialize();
           currentSize = currentRegion.getLargestHStoreSize();
         }
-        nextRegion = HRegion.newHRegion(tabledir, hlog, fs, conf, info[i + 1],
-          this.htd, null);
+        nextRegion =
+          HRegion.newHRegion(tabledir, hlog, fs, conf, info[i + 1], null);
         nextRegion.initialize();
         nextSize = nextRegion.getLargestHStoreSize();
 
@@ -359,7 +357,7 @@ class HMerge {
       // Scan root region to find all the meta regions
 
       root = HRegion.newHRegion(rootTableDir, hlog, fs, conf,
-          HRegionInfo.ROOT_REGIONINFO, HTableDescriptor.ROOT_TABLEDESC, null);
+          HRegionInfo.ROOT_REGIONINFO, null);
       root.initialize();
 
       Scan scan = new Scan();

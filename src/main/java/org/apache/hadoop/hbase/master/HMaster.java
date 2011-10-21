@@ -44,7 +44,6 @@ import org.apache.hadoop.hbase.MasterNotRunningException;
 import org.apache.hadoop.hbase.NotAllMetaRegionsOnlineException;
 import org.apache.hadoop.hbase.Server;
 import org.apache.hadoop.hbase.ServerName;
-import org.apache.hadoop.hbase.TableDescriptors;
 import org.apache.hadoop.hbase.TableExistsException;
 import org.apache.hadoop.hbase.TableNotDisabledException;
 import org.apache.hadoop.hbase.TableNotFoundException;
@@ -188,8 +187,6 @@ implements HMasterInterface, HMasterRegionInterface, MasterServices, Server {
   private MasterCoprocessorHost cpHost;
   private final ServerName serverName;
 
-  private TableDescriptors tableDescriptors;
-  
   /**
    * Initializes the HMaster. The steps are as follows:
    * <p>
@@ -424,11 +421,7 @@ implements HMasterInterface, HMasterRegionInterface, MasterServices, Server {
 
     status.setStatus("Initializing Master file system");
     // TODO: Do this using Dependency Injection, using PicoContainer, Guice or Spring.
-    this.fileSystemManager = new MasterFileSystem(this, this, metrics);
-
-    this.tableDescriptors =
-      new FSTableDescriptors(this.fileSystemManager.getFileSystem(),
-      this.fileSystemManager.getRootDir());
+    this.fileSystemManager = new MasterFileSystem(this, metrics);
 
     // publish cluster ID
     status.setStatus("Publishing Cluster ID in ZooKeeper");
@@ -600,11 +593,6 @@ implements HMasterInterface, HMasterRegionInterface, MasterServices, Server {
     // unknown protocol
     LOG.warn("Version requested for unimplemented protocol: "+protocol);
     return -1;
-  }
-
-  @Override
-  public TableDescriptors getTableDescriptors() {
-    return this.tableDescriptors;
   }
 
   /** @return InfoServer object. Maybe null.*/
@@ -1411,40 +1399,37 @@ implements HMasterInterface, HMasterRegionInterface, MasterServices, Server {
   }
 
   /**
-   * Get HTD array for given tables 
+   * Get HTD array for given tables
    * @param tableNames
    * @return HTableDescriptor[]
    */
   public HTableDescriptor[] getHTableDescriptors(List<String> tableNames) {
-    List<HTableDescriptor> list =
-      new ArrayList<HTableDescriptor>(tableNames.size());
-    for (String s: tableNames) {
-      HTableDescriptor htd = null;
-      try {
-        htd = this.tableDescriptors.get(s);
-      } catch (IOException e) {
-        LOG.warn("Failed getting descriptor for " + s, e);
-      }
-      if (htd == null) continue;
-      list.add(htd);
-    }
-    return list.toArray(new HTableDescriptor [] {});
+    return this.assignmentManager.getHTableDescriptors(tableNames);
   }
 
   /**
    * Get all table descriptors
-   * @return All descriptors or null if none.
+   * @return HTableDescriptor[]
    */
-  public HTableDescriptor [] getHTableDescriptors() {
-    Map<String, HTableDescriptor> descriptors = null;
-    try {
-      descriptors = this.tableDescriptors.getAll();
-    } catch (IOException e) {
-      LOG.warn("Failed getting all descriptors", e);
-    }
-    return descriptors == null?
-      null: descriptors.values().toArray(new HTableDescriptor [] {});
+  public HTableDescriptor[] getHTableDescriptors() {
+    return this.assignmentManager.getHTableDescriptors();
   }
+
+  /**
+   * Get a HTD for a given table name
+   * @param tableName
+   * @return HTableDescriptor
+   */
+/*
+  public HTableDescriptor getHTableDescriptor(byte[] tableName) {
+    if (tableName != null && tableName.length > 0) {
+      return this.assignmentManager.getTableDescriptor(
+          Bytes.toString(tableName));
+    }
+    return null;
+  }
+*/
+
 
   /**
    * Compute the average load across all region servers.

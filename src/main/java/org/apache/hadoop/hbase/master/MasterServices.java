@@ -23,10 +23,11 @@ import java.io.IOException;
 
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.Server;
-import org.apache.hadoop.hbase.TableDescriptors;
 import org.apache.hadoop.hbase.TableNotDisabledException;
 import org.apache.hadoop.hbase.TableNotFoundException;
+import org.apache.hadoop.hbase.catalog.CatalogTracker;
 import org.apache.hadoop.hbase.executor.ExecutorService;
+import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 
 /**
  * Services Master supplies
@@ -68,9 +69,4 @@ public interface MasterServices extends Server {
    */
   public void createTable(HTableDescriptor desc, byte [][] splitKeys)
       throws IOException;
-
-  /**
-   * @return Return table descriptors implementation.
-   */
-  public TableDescriptors getTableDescriptors();
 }
