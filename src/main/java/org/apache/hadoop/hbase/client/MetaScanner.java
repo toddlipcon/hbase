@@ -187,7 +187,7 @@ public class MetaScanner {
       if (LOG.isDebugEnabled()) {
         LOG.debug("Scanning " + Bytes.toString(metaTableName) +
           " starting at row=" + Bytes.toStringBinary(startRow) + " for max=" +
-          rowUpperLimit + " rows using " + connection.toString());
+          rowUpperLimit + " rows");
       }
       callable = new ScannerCallable(connection, metaTableName, scan);
       // Open scanner

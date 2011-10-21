@@ -902,7 +902,8 @@ public class HBaseFsck {
 
           // record the latest modification of this META record
           long ts =  Collections.max(result.list(), comp).getTimestamp();
-          Pair<HRegionInfo, ServerName> pair = MetaReader.parseCatalogResult(result);
+          Pair<HRegionInfo, ServerName> pair =
+            MetaReader.metaRowToRegionPair(result);
           if (pair == null || pair.getFirst() == null) {
             emptyRegionInfoQualifiers.add(result);
             return true;

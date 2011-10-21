@@ -128,10 +128,8 @@ public class TestMergeTable {
       assertTrue("originalTableRegions=" + originalTableRegions.size() +
         ", postMergeTableRegions=" + postMergeTableRegions.size(),
         postMergeTableRegions.size() < originalTableRegions.size());
-      LOG.info("Done with merge");
     } finally {
       UTIL.shutdownMiniCluster();
-      LOG.info("After cluster shutdown");
     }
   }
 

@@ -267,12 +267,11 @@ public class AssignmentManager extends ZooKeeperListener {
    * @param tableName
    * @return Pair indicating the status of the alter command
    * @throws IOException
-   * @throws InterruptedException 
    */
   public Pair<Integer, Integer> getReopenStatus(byte[] tableName)
-  throws IOException, InterruptedException {
-    List <HRegionInfo> hris =
-      MetaReader.getTableRegions(this.master.getCatalogTracker(), tableName);
+      throws IOException {
+    List <HRegionInfo> hris = MetaReader.getTableRegions(
+                              this.master.getCatalogTracker(), tableName);
     Integer pending = 0;
     for(HRegionInfo hri : hris) {
       if(regionsToReopen.get(hri.getEncodedName()) != null) {
@@ -729,7 +728,7 @@ public class AssignmentManager extends ZooKeeperListener {
         case RS_ZK_REGION_OPENING:
           // Should see OPENING after we have asked it to OPEN or additional
           // times after already being in state of OPENING
-          if (regionState == null ||
+          if(regionState == null ||
               (!regionState.isPendingOpen() && !regionState.isOpening())) {
             LOG.warn("Received OPENING for region " +
                 prettyPrintedRegionName +
@@ -1763,6 +1762,7 @@ public class AssignmentManager extends ZooKeeperListener {
       // Presume that master has stale data.  Presume remote side just split.
       // Presume that the split message when it comes in will fix up the master's
       // in memory cluster state.
+      return;
     } catch (Throwable t) {
       if (t instanceof RemoteException) {
         t = ((RemoteException)t).unwrapRemoteException();
@@ -2080,13 +2080,13 @@ public class AssignmentManager extends ZooKeeperListener {
   Map<ServerName, List<Pair<HRegionInfo, Result>>> rebuildUserRegions()
   throws IOException, KeeperException {
     // Region assignment from META
-    List<Result> results = MetaReader.fullScan(this.catalogTracker);
+    List<Result> results = MetaReader.fullScanOfResults(this.catalogTracker);
     // Map of offline servers and their regions to be returned
     Map<ServerName, List<Pair<HRegionInfo,Result>>> offlineServers =
       new TreeMap<ServerName, List<Pair<HRegionInfo, Result>>>();
     // Iterate regions in META
     for (Result result : results) {
-      Pair<HRegionInfo, ServerName> region = MetaReader.parseCatalogResult(result);
+      Pair<HRegionInfo, ServerName> region = MetaReader.metaRowToRegionPair(result);
       if (region == null) continue;
       HRegionInfo regionInfo = region.getFirst();
       ServerName regionLocation = region.getSecond();

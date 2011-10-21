@@ -33,7 +33,6 @@ import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.JVMClusterUtil.RegionServerThread;
-import org.apache.hadoop.hbase.util.Threads;
 
 import java.util.concurrent.CopyOnWriteArrayList;
 import org.apache.hadoop.hbase.master.HMaster;
@@ -239,7 +238,6 @@ public class LocalHBaseCluster {
     List<RegionServerThread> list = getRegionServers();
     for (JVMClusterUtil.RegionServerThread rst: list) {
       if (rst.isAlive()) liveServers.add(rst);
-      else LOG.info("Not alive " + rst.getName());
     }
     return liveServers;
   }
@@ -388,12 +386,12 @@ public class LocalHBaseCluster {
    */
   public void join() {
     if (this.regionThreads != null) {
-      for(Thread t: this.regionThreads) {
-        if (t.isAlive()) {
-          try {
-            Threads.threadDumpingIsAlive(t);
+        for(Thread t: this.regionThreads) {
+          if (t.isAlive()) {
+            try {
+              t.join();
           } catch (InterruptedException e) {
-            LOG.debug("Interrupted", e);
+            // continue
           }
         }
       }
@@ -402,9 +400,9 @@ public class LocalHBaseCluster {
       for (Thread t : this.masterThreads) {
         if (t.isAlive()) {
           try {
-            Threads.threadDumpingIsAlive(t);
+            t.join();
           } catch (InterruptedException e) {
-            LOG.debug("Interrupted", e);
+            // continue
           }
         }
       }

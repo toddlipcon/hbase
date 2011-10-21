@@ -25,6 +25,7 @@ import static org.junit.Assert.fail;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -80,10 +81,14 @@ public class TestRegionRebalancing {
     this.table = new HTable(UTIL.getConfiguration(), this.desc.getName());
     CatalogTracker ct = new CatalogTracker(UTIL.getConfiguration());
     ct.start();
+    Map<HRegionInfo, ServerName> regions = null;
     try {
-      MetaReader.fullScanMetaAndPrint(ct);
+      regions = MetaReader.fullScan(ct);
     } finally {
       ct.stop();
+    }
+    for (Map.Entry<HRegionInfo, ServerName> e: regions.entrySet()) {
+      LOG.info(e);
     }
     assertEquals("Test table should have right number of regions",
       HBaseTestingUtility.KEYS.length + 1/*One extra to account for start/end keys*/,

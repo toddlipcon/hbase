@@ -54,6 +54,7 @@ import org.apache.hadoop.hbase.ZooKeeperConnectionException;
 import org.apache.hadoop.hbase.catalog.CatalogTracker;
 import org.apache.hadoop.hbase.catalog.MetaReader;
 import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitor;
+import org.apache.hadoop.hbase.coprocessor.ObserverContext;
 import org.apache.hadoop.hbase.ipc.HMasterInterface;
 import org.apache.hadoop.hbase.ipc.HRegionInterface;
 import org.apache.hadoop.hbase.regionserver.wal.FailedLogCloseException;
@@ -137,6 +138,7 @@ public class HBaseAdmin implements Abortable, Closeable {
     CatalogTracker ct = null;
     try {
       ct = new CatalogTracker(this.conf);
+
       ct.start();
     } catch (InterruptedException e) {
       // Let it out as an IOE for now until we redo all so tolerate IEs
@@ -1595,19 +1597,19 @@ public class HBaseAdmin implements Abortable, Closeable {
    * get the regions of a given table.
    *
    * @param tableName the name of the table
-   * @return Ordered list of {@link HRegionInfo}.
+   * @return Ordered list of {@link HRegionInfo}.   * 
    * @throws IOException
    */  
   public List<HRegionInfo> getTableRegions(final byte[] tableName)
   throws IOException {
     CatalogTracker ct = getCatalogTracker();
-    List<HRegionInfo> Regions = null;
+    List<HRegionInfo> Regions;
     try {
       Regions = MetaReader.getTableRegions(ct, tableName, true);
     } finally {
       cleanupCatalogTracker(ct);
     }
-    return Regions;
+    return Regions;	  
   }
   
   public void close() throws IOException {
