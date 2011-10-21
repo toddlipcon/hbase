@@ -26,13 +26,9 @@ import java.util.Arrays;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.KeyValue.KVComparator;
 import org.apache.hadoop.hbase.migration.HRegionInfo090x;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.hadoop.hbase.util.FSTableDescriptors;
 import org.apache.hadoop.hbase.util.JenkinsHash;
 import org.apache.hadoop.hbase.util.MD5Hash;
 import org.apache.hadoop.io.VersionedWritable;
@@ -539,50 +535,18 @@ public class HRegionInfo extends VersionedWritable implements WritableComparable
        Bytes.equals(endKey, HConstants.EMPTY_BYTE_ARRAY));
   }
 
-  /**
-   * @return the tableDesc
-   * @deprecated Do not use; expensive call
-   *         use HRegionInfo.getTableNameAsString() in place of
-   *         HRegionInfo.getTableDesc().getNameAsString()
-   */
+  /** @return the tableDesc */
    @Deprecated
-  public HTableDescriptor getTableDesc() {
-    Configuration c = HBaseConfiguration.create();
-    FileSystem fs;
-    try {
-      fs = FileSystem.get(c);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-    FSTableDescriptors fstd =
-      new FSTableDescriptors(fs, new Path(c.get(HConstants.HBASE_DIR)));
-    try {
-      return fstd.get(this.tableName);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
+  public HTableDescriptor getTableDesc(){
+    return null;
   }
 
   /**
    * @param newDesc new table descriptor to use
-   * @deprecated Do not use; expensive call
    */
   @Deprecated
   public void setTableDesc(HTableDescriptor newDesc) {
-    Configuration c = HBaseConfiguration.create();
-    FileSystem fs;
-    try {
-      fs = FileSystem.get(c);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-    FSTableDescriptors fstd =
-      new FSTableDescriptors(fs, new Path(c.get(HConstants.HBASE_DIR)));
-    try {
-      fstd.add(newDesc);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
+    // do nothing.
   }
 
   /** @return true if this is the root region */
