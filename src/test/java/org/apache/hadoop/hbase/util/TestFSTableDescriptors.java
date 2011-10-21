@@ -19,7 +19,6 @@ package org.apache.hadoop.hbase.util;
 
 import static org.junit.Assert.*;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 
 import org.apache.hadoop.fs.FileSystem;
@@ -83,14 +82,7 @@ public class TestFSTableDescriptors {
       HTableDescriptor htd = new HTableDescriptor(name + i);
       createHTDInFS(fs, rootdir, htd);
     }
-    FSTableDescriptors htds = new FSTableDescriptors(fs, rootdir) {
-      @Override
-      public HTableDescriptor get(byte[] tablename)
-          throws TableExistsException, FileNotFoundException, IOException {
-        System.out.println(Bytes.toString(tablename));
-        return super.get(tablename);
-      }
-    };
+    FSTableDescriptors htds = new FSTableDescriptors(fs, rootdir);
     for (int i = 0; i < count; i++) {
       assertTrue(htds.get(Bytes.toBytes(name + i)) !=  null);
     }
@@ -103,15 +95,14 @@ public class TestFSTableDescriptors {
       htd.addFamily(new HColumnDescriptor("" + i));
       FSUtils.updateHTableDescriptor(fs, rootdir, htd);
     }
-    Thread.sleep(1000);
     for (int i = 0; i < count; i++) {
       assertTrue(htds.get(Bytes.toBytes(name + i)) !=  null);
     }
     for (int i = 0; i < count; i++) {
       assertTrue(htds.get(Bytes.toBytes(name + i)) !=  null);
     }
-    assertEquals(count * 4, htds.invocations);
-    assertEquals(count * 2, htds.cachehits);
+    assertEquals(htds.invocations, count * 4);
+    assertEquals(htds.cachehits, count * 2);
     assertTrue(htds.get(HConstants.ROOT_TABLE_NAME) != null);
     assertEquals(htds.invocations, count * 4 + 1);
     assertEquals(htds.cachehits, count * 2 + 1);
