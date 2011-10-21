@@ -25,8 +25,6 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.io.IOException;
-
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
@@ -62,15 +60,9 @@ public class TestHRegionInfo {
   }
   
   @Test
-  public void testGetSetOfHTD() throws IOException {
+  public void testGetSetOfHTD() {
     HBaseTestingUtility HTU = new HBaseTestingUtility();
     final String tablename = "testGetSetOfHTD";
-
-    // Delete the temporary table directory that might still be there from the
-    // previous test run.
-    FSUtils.deleteTableDescriptorIfExists(tablename,
-        HTU.getConfiguration());
-
     HTableDescriptor htd = new HTableDescriptor(tablename);
     FSUtils.createTableDescriptor(htd, HTU.getConfiguration());
     HRegionInfo hri = new HRegionInfo(Bytes.toBytes("testGetSetOfHTD"),
