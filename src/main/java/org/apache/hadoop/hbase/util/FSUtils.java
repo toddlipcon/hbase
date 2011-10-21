@@ -930,9 +930,6 @@ public abstract class FSUtils {
     HTableDescriptor htd = null;
     try {
       htd = getTableDescriptor(fs, getTablePath(hbaseRootDir, tableName));
-    } catch (NullPointerException e) {
-      LOG.debug("Exception during readTableDecriptor. Current table name = " +
-        tableName , e);
     } catch (IOException ioe) {
       LOG.debug("Exception during readTableDecriptor. Current table name = " +
         tableName , ioe);
@@ -941,10 +938,10 @@ public abstract class FSUtils {
   }
 
   public static HTableDescriptor getTableDescriptor(FileSystem fs, Path tableDir)
-  throws IOException, NullPointerException {
+  throws IOException {
     if (tableDir == null) throw new NullPointerException();
-    Path tableinfo = new Path(tableDir, HConstants.TABLEINFO_NAME);
-    FSDataInputStream fsDataInputStream = fs.open(tableinfo);
+    FSDataInputStream fsDataInputStream =
+      fs.open(new Path(tableDir, HConstants.TABLEINFO_NAME));
     HTableDescriptor hTableDescriptor = null;
     try {
       hTableDescriptor = new HTableDescriptor();
