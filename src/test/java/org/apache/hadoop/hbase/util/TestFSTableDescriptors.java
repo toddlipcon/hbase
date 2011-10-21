@@ -22,8 +22,6 @@ import static org.junit.Assert.*;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
@@ -42,7 +40,6 @@ import org.junit.Test;
  */
 public class TestFSTableDescriptors {
   private static final HBaseTestingUtility UTIL = new HBaseTestingUtility();
-  private static final Log LOG = LogFactory.getLog(TestFSTableDescriptors.class);
 
   @Test
   public void testRemoves() throws IOException {
@@ -78,7 +75,7 @@ public class TestFSTableDescriptors {
   throws IOException, InterruptedException {
     final String name = "testHTableDescriptors";
     FileSystem fs = FileSystem.get(UTIL.getConfiguration());
-    // Cleanup old tests if any debris laying around.
+    // Cleanup old tests if any detrius laying around.
     Path rootdir = new Path(HBaseTestingUtility.getTestDir(), name);
     final int count = 10;
     // Write out table infos.
@@ -90,7 +87,7 @@ public class TestFSTableDescriptors {
       @Override
       public HTableDescriptor get(byte[] tablename)
           throws TableExistsException, FileNotFoundException, IOException {
-        LOG.info(Bytes.toString(tablename) + ", cachehits=" + this.cachehits);
+        System.out.println(Bytes.toString(tablename) + ", cachehits=" + this.cachehits);
         return super.get(tablename);
       }
     };
@@ -100,14 +97,14 @@ public class TestFSTableDescriptors {
     for (int i = 0; i < count; i++) {
       assertTrue(htds.get(Bytes.toBytes(name + i)) !=  null);
     }
+    // Wait a while so mod time we write is for sure different.
+    Thread.sleep(1000);
     // Update the table infos
     for (int i = 0; i < count; i++) {
       HTableDescriptor htd = new HTableDescriptor(name + i);
       htd.addFamily(new HColumnDescriptor("" + i));
       FSUtils.updateHTableDescriptor(fs, rootdir, htd);
     }
-    // Wait a while so mod time we write is for sure different.
-    Thread.sleep(100);
     for (int i = 0; i < count; i++) {
       assertTrue(htds.get(Bytes.toBytes(name + i)) !=  null);
     }
