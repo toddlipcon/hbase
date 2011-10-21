@@ -59,11 +59,11 @@ public class TestCloseRegionHandler {
     final RegionServerServices rss = new MockRegionServerServices();
     HTableDescriptor htd = new HTableDescriptor("testFailedFlushAborts");
     final HRegionInfo hri =
-      new HRegionInfo(htd.getName(), HConstants.EMPTY_END_ROW,
+      new HRegionInfo(htd, HConstants.EMPTY_END_ROW,
         HConstants.EMPTY_END_ROW);
     HRegion region =
       HRegion.createHRegion(hri, HBaseTestingUtility.getTestDir(),
-        HTU.getConfiguration(), htd);
+        HTU.getConfiguration());
     assertNotNull(region);
     // Spy on the region so can throw exception when close is called.
     HRegion spy = Mockito.spy(region);

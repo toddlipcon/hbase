@@ -2869,9 +2869,9 @@ public class TestHRegion extends HBaseTestCase {
     
     HTableDescriptor htd = new HTableDescriptor(tableName);
     htd.addFamily(hcd);
-    HRegionInfo info = new HRegionInfo(htd.getName(), null, null, false);
+    HRegionInfo info = new HRegionInfo(htd, null, null, false);
     Path path = new Path(DIR + "testBloomFilterSize");
-    region = HRegion.createHRegion(info, path, conf, htd);
+    region = HRegion.createHRegion(info, path, conf);
     
     int num_unique_rows = 10;
     int duplicate_multiplier =2;
@@ -2927,9 +2927,9 @@ public class TestHRegion extends HBaseTestCase {
         HColumnDescriptor.DEFAULT_REPLICATION_SCOPE);
     HTableDescriptor htd = new HTableDescriptor(TABLE);
     htd.addFamily(hcd);
-    HRegionInfo info = new HRegionInfo(htd.getName(), null, null, false);
+    HRegionInfo info = new HRegionInfo(htd, null, null, false);
     Path path = new Path(DIR + "testAllColumnsWithBloomFilter");
-    region = HRegion.createHRegion(info, path, conf, htd);
+    region = HRegion.createHRegion(info, path, conf);
 
     // For row:0, col:0: insert versions 1 through 5.
     byte row[] = Bytes.toBytes("row:" + 0);
@@ -2972,9 +2972,9 @@ public class TestHRegion extends HBaseTestCase {
 
     HTableDescriptor htd = new HTableDescriptor(tableName);
     htd.addFamily(hcd);
-    HRegionInfo info = new HRegionInfo(htd.getName(), null, null, false);
+    HRegionInfo info = new HRegionInfo(htd, null, null, false);
     Path path = new Path(DIR + "TestDeleteRowWithBloomFilter");
-    region = HRegion.createHRegion(info, path, conf, htd);
+    region = HRegion.createHRegion(info, path, conf);
 
     // Insert some data
     byte row[] = Bytes.toBytes("row1");
@@ -3172,14 +3172,14 @@ public class TestHRegion extends HBaseTestCase {
     for(byte [] family : families) {
       htd.addFamily(new HColumnDescriptor(family));
     }
-    HRegionInfo info = new HRegionInfo(htd.getName(), startKey, stopKey, false);
+    HRegionInfo info = new HRegionInfo(htd, startKey, stopKey, false);
     Path path = new Path(DIR + callingMethod);
     if (fs.exists(path)) {
       if (!fs.delete(path, true)) {
         throw new IOException("Failed delete of " + path);
       }
     }
-    region = HRegion.createHRegion(info, path, conf, htd);
+    region = HRegion.createHRegion(info, path, conf);
   }
 
   /**

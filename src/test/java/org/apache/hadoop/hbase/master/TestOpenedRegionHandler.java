@@ -122,10 +122,10 @@ public class TestOpenedRegionHandler {
       final Server server = new MockServer(TEST_UTIL);
       HTableDescriptor htd = new HTableDescriptor(
           "testShouldNotCompeleteOpenedRegionSuccessfullyIfVersionMismatches");
-      HRegionInfo hri = new HRegionInfo(htd.getName(),
+      HRegionInfo hri = new HRegionInfo(htd,
           Bytes.toBytes(testIndex), Bytes.toBytes(testIndex + 1));
       HRegion region = HRegion.createHRegion(hri, HBaseTestingUtility
-          .getTestDir(), TEST_UTIL.getConfiguration(), htd);
+          .getTestDir(), TEST_UTIL.getConfiguration());
       assertNotNull(region);
       AssignmentManager am = Mockito.mock(AssignmentManager.class);
       when(am.isRegionInTransition(hri)).thenReturn(

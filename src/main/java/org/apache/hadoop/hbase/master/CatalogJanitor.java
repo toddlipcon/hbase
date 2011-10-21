@@ -35,7 +35,6 @@ import org.apache.hadoop.hbase.Chore;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
-import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.Server;
 import org.apache.hadoop.hbase.catalog.MetaEditor;
 import org.apache.hadoop.hbase.catalog.MetaReader;
@@ -46,7 +45,6 @@ import org.apache.hadoop.hbase.regionserver.StoreFile;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.util.Writables;
-
 
 /**
  * A janitor for the catalog tables.  Scans the <code>.META.</code> catalog
@@ -146,8 +144,8 @@ class CatalogJanitor extends Chore {
       if (left == null) return -1;
       if (right == null) return 1;
       // Same table name.
-      int result = Bytes.compareTo(left.getTableName(),
-          right.getTableName());
+      int result = Bytes.compareTo(left.getTableDesc().getName(),
+          right.getTableDesc().getName());
       if (result != 0) return result;
       // Compare start keys.
       result = Bytes.compareTo(left.getStartKey(), right.getStartKey());
@@ -308,16 +306,14 @@ class CatalogJanitor extends Chore {
     }
     FileSystem fs = this.services.getMasterFileSystem().getFileSystem();
     Path rootdir = this.services.getMasterFileSystem().getRootDir();
-    Path tabledir = new Path(rootdir, split.getTableNameAsString());
+    Path tabledir = new Path(rootdir, split.getTableDesc().getNameAsString());
     Path regiondir = new Path(tabledir, split.getEncodedName());
     exists = fs.exists(regiondir);
     if (!exists) {
       LOG.warn("Daughter regiondir does not exist: " + regiondir.toString());
       return new Pair<Boolean, Boolean>(exists, Boolean.FALSE);
     }
-    HTableDescriptor parentDescriptor = getTableDescriptor(parent.getTableName());
-
-    for (HColumnDescriptor family: parentDescriptor.getFamilies()) {
+    for (HColumnDescriptor family: split.getTableDesc().getFamilies()) {
       Path p = Store.getStoreHomedir(tabledir, split.getEncodedName(),
         family.getName());
       if (!fs.exists(p)) continue;
@@ -337,10 +333,5 @@ class CatalogJanitor extends Chore {
     }
     return new Pair<Boolean, Boolean>(Boolean.valueOf(exists),
       Boolean.valueOf(references));
-  }
-
-  private HTableDescriptor getTableDescriptor(byte[] tableName) {
-    return this.services.getAssignmentManager().getTableDescriptor(
-        Bytes.toString(tableName));
   }
 }

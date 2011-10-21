@@ -75,7 +75,6 @@ import org.apache.hadoop.hbase.master.handler.ServerShutdownHandler;
 import org.apache.hadoop.hbase.master.handler.SplitRegionHandler;
 import org.apache.hadoop.hbase.regionserver.RegionServerStoppedException;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.util.Threads;
 import org.apache.hadoop.hbase.util.Writables;
@@ -167,10 +166,6 @@ public class AssignmentManager extends ZooKeeperListener {
 
   //Thread pool executor service for timeout monitor
   private java.util.concurrent.ExecutorService threadPoolExecutorService;
-  private Map<String, HTableDescriptor> tableDescMap =
-      new HashMap<String, HTableDescriptor>();
-
-
   /**
    * Constructs a new assignment manager.
    *
@@ -202,7 +197,6 @@ public class AssignmentManager extends ZooKeeperListener {
       this.master.getConfiguration().getInt("hbase.assignment.maximum.attempts", 10);
     this.balancer = LoadBalancerFactory.getLoadBalancer(conf);
     this.threadPoolExecutorService = Executors.newCachedThreadPool();
-    initHTableDescriptorMap();
   }
 
   /**
@@ -361,9 +355,7 @@ public class AssignmentManager extends ZooKeeperListener {
     // its a clean cluster startup, else its a failover.
     boolean regionsToProcess = false;
     for (Map.Entry<HRegionInfo, ServerName> e: this.regions.entrySet()) {
-      if (!e.getKey().isMetaRegion()
-          && !e.getKey().isRootRegion()
-          && e.getValue() != null) {
+      if (!e.getKey().isMetaRegion() && e.getValue() != null) {
         LOG.debug("Found " + e + " out on cluster");
         regionsToProcess = true;
         break;
@@ -385,7 +377,6 @@ public class AssignmentManager extends ZooKeeperListener {
 
     } else {
       // Fresh cluster startup.
-      LOG.info("Clean cluster startup. Assigning userregions");
       cleanoutUnassigned();
       assignAllUserRegions();
     }
@@ -1225,10 +1216,6 @@ public class AssignmentManager extends ZooKeeperListener {
     }
     // Move on to open regions.
     try {
-      // Update the tableDesc map.
-      for (HRegionInfo region : regions) {
-        updateDescMap(region.getTableNameAsString());
-      }
       // Send OPEN RPC. If it fails on a IOE or RemoteException, the
       // TimeoutMonitor will pick up the pieces.
       long maxWaitTime = System.currentTimeMillis() +
@@ -2400,10 +2387,10 @@ public class AssignmentManager extends ZooKeeperListener {
   public List<HRegionInfo> getRegionsOfTable(byte[] tableName) {
     List<HRegionInfo> tableRegions = new ArrayList<HRegionInfo>();
     HRegionInfo boundary =
-      new HRegionInfo(tableName, null, null);
+      new HRegionInfo(new HTableDescriptor(tableName), null, null);
     synchronized (this.regions) {
       for (HRegionInfo regionInfo: this.regions.tailMap(boundary).keySet()) {
-        if(Bytes.equals(regionInfo.getTableName(), tableName)) {
+        if(Bytes.equals(regionInfo.getTableDesc().getName(), tableName)) {
           tableRegions.add(regionInfo);
         } else {
           break;
@@ -2677,7 +2664,7 @@ public class AssignmentManager extends ZooKeeperListener {
     // that case. This is not racing with the region server itself since RS
     // report is done after the split transaction completed.
     if (this.zkTable.isDisablingOrDisabledTable(
-        parent.getTableNameAsString())) {
+        parent.getTableDesc().getNameAsString())) {
       unassign(a);
       unassign(b);
     }
@@ -2748,138 +2735,29 @@ public class AssignmentManager extends ZooKeeperListener {
     }
   }
 
-  private void initHTableDescriptorMap() {
+  /**
+   * Assigns list of user regions in round-robin fashion, if any.
+   * @param sync True if we are to wait on all assigns.
+   * @param startup True if this is server startup time.
+   * @throws InterruptedException
+   * @throws IOException
+   */
+  void bulkAssignUserRegions(final HRegionInfo [] regions,
+      final List<ServerName> servers, final boolean sync)
+  throws IOException {
+    Map<ServerName, List<HRegionInfo>> bulkPlan =
+      balancer.roundRobinAssignment(Arrays.asList(regions), servers);
+    LOG.info("Bulk assigning " + regions.length + " region(s) " +
+      "round-robin across " + servers.size() + " server(s)");
+    // Use fixed count thread pool assigning.
+    BulkAssigner ba = new GeneralBulkAssigner(this.master, bulkPlan, this);
     try {
-      synchronized (this.tableDescMap) {
-        this.tableDescMap =
-            FSUtils.getTableDescriptors(this.master.getConfiguration());
-      }
-    } catch (IOException e) {
-      LOG.info("IOException while initializing HTableDescriptor Map");
+      ba.bulkAssign(sync);
+    } catch (InterruptedException e) {
+      throw new IOException("InterruptedException bulk assigning", e);
     }
+    LOG.info("Bulk assigning done");
   }
-
-  private HTableDescriptor readTableDescriptor(String tableName)
-      throws IOException {
-    return FSUtils.getHTableDescriptor(
-        this.master.getConfiguration(), tableName);
-  }
-
-  private boolean isRootOrMetaRegion(String tableName) {
-    return (
-        tableName.equals(
-            HRegionInfo.ROOT_REGIONINFO.getTableNameAsString())
-        ||
-        tableName.equals(
-            HRegionInfo.FIRST_META_REGIONINFO.getTableNameAsString()));
-  }
-
-  private void updateDescMap(String tableName) throws IOException {
-
-    if (this.tableDescMap == null) {
-      LOG.error("Table Descriptor cache is null. " +
-          "Skipping desc map update for table = " + tableName);
-      return;
-    }
-
-    if (tableName == null || isRootOrMetaRegion(tableName))
-      return;
-    if (!this.tableDescMap.containsKey(tableName)) {
-      HTableDescriptor htd = readTableDescriptor(tableName);
-      if (htd != null) {
-        LOG.info("Updating TableDesc Map for tablename = " + tableName
-        + "htd == " + htd);
-        synchronized (this.tableDescMap) {
-        this.tableDescMap.put(tableName, htd);
-        }
-      } else {
-        LOG.info("HTable Descriptor is NULL for table = " + tableName);
-      }
-    }
-  }
-
-  public void updateTableDesc(String tableName, HTableDescriptor htd) {
-    if (this.tableDescMap == null) {
-      LOG.error("Table Descriptor cache is null. " +
-          "Skipping desc map update for table = " + tableName);
-      return;
-    }
-    if (tableName == null || isRootOrMetaRegion(tableName))
-      return;
-    if (!this.tableDescMap.containsKey(tableName)) {
-      LOG.error("Table descriptor missing in DescMap. for tablename = " + tableName);
-    }
-    synchronized (this.tableDescMap) {
-      this.tableDescMap.put(tableName, htd);
-    }
-    LOG.info("TableDesc updated successfully for table = " + tableName);
-  }
-
-  public void deleteTableDesc(String tableName) {
-    if (this.tableDescMap == null) {
-      LOG.error("Table Descriptor cache is null. " +
-          "Skipping desc map update for table = " + tableName);
-      return;
-    }
-    if (tableName == null || isRootOrMetaRegion(tableName))
-      return;
-    if (!this.tableDescMap.containsKey(tableName)) {
-      LOG.error("Table descriptor missing in DescMap. for tablename = " + tableName);
-    }
-    synchronized (this.tableDescMap) {
-      this.tableDescMap.remove(tableName);
-    }
-    LOG.info("TableDesc removed successfully for table = " + tableName);
-  }
-
-  public HTableDescriptor[] getHTableDescriptors(List<String> tableNames) {
-    List htdList = null;
-    HTableDescriptor[] htd = null;
-    if (tableNames != null && tableNames.size() > 0) {
-      if (this.tableDescMap != null) {
-        htd = new HTableDescriptor[tableNames.size()];
-        htdList = new ArrayList();
-        synchronized (this.tableDescMap) {
-          int index = 0;
-          for (String tableName : tableNames) {
-            HTableDescriptor htdesc = this.tableDescMap.get(tableName);
-            htd[index++] = this.tableDescMap.get(tableName);
-            if (htdesc != null) {
-              htdList.add(htdesc);
-            }
-
-          }
-        }
-      }
-    }
-    if (htdList != null && htdList.size() > 0 ) {
-      return (HTableDescriptor[]) htdList.toArray(new HTableDescriptor[htdList.size()]);
-    }
-    return null;
-  }
-
-  public HTableDescriptor[] getHTableDescriptors() {
-    if (this.tableDescMap != null) {
-      synchronized (this.tableDescMap) {
-        Collection<HTableDescriptor> htdc = this.tableDescMap.values();
-        if (htdc != null) {
-          return htdc.toArray(new HTableDescriptor[htdc.size()]);
-        }
-      }
-    }
-    return null;
-  }
-
-  public HTableDescriptor getTableDescriptor(String tableName) {
-    HTableDescriptor htd = null;
-    if (tableName != null) {
-      synchronized (this.tableDescMap) {
-        htd = this.tableDescMap.get(tableName);
-      }
-    }
-    return htd;
-  }
-
 
   /**
    * State of a Region while undergoing transitions.

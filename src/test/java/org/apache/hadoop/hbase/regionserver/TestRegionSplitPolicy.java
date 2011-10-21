@@ -42,9 +42,9 @@ public class TestRegionSplitPolicy {
   public void setupMocks() {
     conf = HBaseConfiguration.create();
 
-    HRegionInfo hri = new HRegionInfo(Bytes.toBytes("testtable"));
-
     htd = new HTableDescriptor();
+    HRegionInfo hri = new HRegionInfo(htd, null, null);
+
     mockRegion = Mockito.mock(HRegion.class);
     Mockito.doReturn(htd).when(mockRegion).getTableDesc();
     Mockito.doReturn(hri).when(mockRegion).getRegionInfo();

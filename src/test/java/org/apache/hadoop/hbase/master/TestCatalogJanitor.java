@@ -122,14 +122,9 @@ public class TestCatalogJanitor {
    */
   class MockMasterServices implements MasterServices {
     private final MasterFileSystem mfs;
-    private final AssignmentManager asm;
 
     MockMasterServices(final Server server) throws IOException {
       this.mfs = new MasterFileSystem(server, null);
-      HTableDescriptor htd = new HTableDescriptor("table");
-      htd.addFamily(new HColumnDescriptor("family"));
-      this.asm = Mockito.mock(AssignmentManager.class);
-      Mockito.when(asm.getTableDescriptor("table")).thenReturn(htd);
     }
 
     @Override
@@ -145,7 +140,7 @@ public class TestCatalogJanitor {
 
     @Override
     public AssignmentManager getAssignmentManager() {
-      return this.asm;
+      return null;
     }
 
     @Override
@@ -241,14 +236,11 @@ public class TestCatalogJanitor {
     // Create regions.
     HTableDescriptor htd = createHTableDescriptor();
     HRegionInfo parent =
-      new HRegionInfo(htd.getName(), Bytes.toBytes("aaa"),
-          Bytes.toBytes("eee"));
+      new HRegionInfo(htd, Bytes.toBytes("aaa"), Bytes.toBytes("eee"));
     HRegionInfo splita =
-      new HRegionInfo(htd.getName(), Bytes.toBytes("aaa"),
-          Bytes.toBytes("ccc"));
+      new HRegionInfo(htd, Bytes.toBytes("aaa"), Bytes.toBytes("ccc"));
     HRegionInfo splitb =
-      new HRegionInfo(htd.getName(), Bytes.toBytes("ccc"),
-          Bytes.toBytes("eee"));
+      new HRegionInfo(htd, Bytes.toBytes("ccc"), Bytes.toBytes("eee"));
     // Test that when both daughter regions are in place, that we do not
     // remove the parent.
     Result r = createResult(parent, splita, splitb);
@@ -288,30 +280,30 @@ public class TestCatalogJanitor {
     // Create regions: aaa->eee, aaa->ccc, aaa->bbb, bbb->ccc, etc.
 
     // Parent
-    HRegionInfo parent = new HRegionInfo(htd.getName(), Bytes.toBytes("aaa"),
+    HRegionInfo parent = new HRegionInfo(htd, Bytes.toBytes("aaa"),
       Bytes.toBytes("eee"));
     // Sleep a second else the encoded name on these regions comes out
     // same for all with same start key and made in same second.
     Thread.sleep(1001);
 
     // Daughter a
-    HRegionInfo splita = new HRegionInfo(htd.getName(), Bytes.toBytes("aaa"),
+    HRegionInfo splita = new HRegionInfo(htd, Bytes.toBytes("aaa"),
       Bytes.toBytes("ccc"));
     Thread.sleep(1001);
     // Make daughters of daughter a; splitaa and splitab.
-    HRegionInfo splitaa = new HRegionInfo(htd.getName(), Bytes.toBytes("aaa"),
+    HRegionInfo splitaa = new HRegionInfo(htd, Bytes.toBytes("aaa"),
       Bytes.toBytes("bbb"));
-    HRegionInfo splitab = new HRegionInfo(htd.getName(), Bytes.toBytes("bbb"),
+    HRegionInfo splitab = new HRegionInfo(htd, Bytes.toBytes("bbb"),
       Bytes.toBytes("ccc"));
 
     // Daughter b
-    HRegionInfo splitb = new HRegionInfo(htd.getName(), Bytes.toBytes("ccc"),
+    HRegionInfo splitb = new HRegionInfo(htd, Bytes.toBytes("ccc"),
       Bytes.toBytes("eee"));
     Thread.sleep(1001);
     // Make Daughters of daughterb; splitba and splitbb.
-    HRegionInfo splitba = new HRegionInfo(htd.getName(), Bytes.toBytes("ccc"),
+    HRegionInfo splitba = new HRegionInfo(htd, Bytes.toBytes("ccc"),
       Bytes.toBytes("ddd"));
-    HRegionInfo splitbb = new HRegionInfo(htd.getName(), Bytes.toBytes("ddd"),
+    HRegionInfo splitbb = new HRegionInfo(htd, Bytes.toBytes("ddd"),
       Bytes.toBytes("eee"));
 
     // First test that our Comparator works right up in CatalogJanitor.

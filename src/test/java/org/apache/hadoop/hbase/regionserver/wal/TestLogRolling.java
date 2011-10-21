@@ -429,9 +429,6 @@ public class TestLogRolling  {
       @Override
       public void visitLogEntryBeforeWrite(HRegionInfo info, HLogKey logKey,
           WALEdit logEdit) {}
-      @Override
-      public void visitLogEntryBeforeWrite(HTableDescriptor htd, HLogKey logKey,
-          WALEdit logEdit) {}
     });
 
     assertTrue("Need HDFS-826 for this test", log.canGetCurReplicas());

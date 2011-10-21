@@ -51,7 +51,6 @@ import org.apache.hadoop.hbase.UnknownRegionException;
 import org.apache.hadoop.hbase.catalog.CatalogTracker;
 import org.apache.hadoop.hbase.catalog.MetaEditor;
 import org.apache.hadoop.hbase.catalog.MetaReader;
-import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.MetaScanner;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitor;
@@ -81,7 +80,6 @@ import org.apache.hadoop.hbase.regionserver.wal.HLog;
 import org.apache.hadoop.hbase.replication.regionserver.Replication;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.hadoop.hbase.util.FSTableDescriptors;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.InfoServer;
 import org.apache.hadoop.hbase.util.Pair;
@@ -425,7 +423,8 @@ implements HMasterInterface, HMasterRegionInterface, MasterServices, Server {
 
     // publish cluster ID
     status.setStatus("Publishing Cluster ID in ZooKeeper");
-    ClusterId.setClusterId(this.zooKeeper, fileSystemManager.getClusterId());
+    ClusterId.setClusterId(this.zooKeeper,
+        fileSystemManager.getClusterId());
 
     this.executorService = new ExecutorService(getServerName().toString());
 
@@ -460,11 +459,7 @@ implements HMasterInterface, HMasterRegionInterface, MasterServices, Server {
 
     // Make sure root and meta assigned before proceeding.
     assignRootAndMeta(status);
-    // Update meta with new HRI if required. i.e migrate all HRI with HTD to
-    // HRI with out HTD in meta and update the status in ROOT. This must happen
-    // before we assign all user regions or else the assignment will fail.
-    updateMetaWithNewHRI();
-
+    
     // Fixup assignment manager status
     status.setStatus("Starting assignment manager");
     this.assignmentManager.joinCluster();
@@ -491,44 +486,6 @@ implements HMasterInterface, HMasterRegionInterface, MasterServices, Server {
         LOG.error("Coprocessor postStartMaster() hook failed", ioe);
       }
     }
-  }
-
-  public boolean isMetaHRIUpdated()
-      throws IOException {
-    boolean metaUpdated = false;
-    Get get = new Get(HRegionInfo.FIRST_META_REGIONINFO.getRegionName());
-    get.addColumn(HConstants.CATALOG_FAMILY,
-        HConstants.META_MIGRATION_QUALIFIER);
-    Result r =
-        catalogTracker.waitForRootServerConnectionDefault().get(
-        HRegionInfo.ROOT_REGIONINFO.getRegionName(), get);
-    if (r != null && r.getBytes() != null)
-    {
-      byte[] metaMigrated = r.getValue(HConstants.CATALOG_FAMILY,
-          HConstants.META_MIGRATION_QUALIFIER);
-      String migrated = Bytes.toString(metaMigrated);
-      metaUpdated = new Boolean(migrated).booleanValue();
-    } else {
-      LOG.info("metaUpdated = NULL.");
-    }
-    LOG.info("Meta updated status = " + metaUpdated);
-    return metaUpdated;
-  }
-
-
-  boolean updateMetaWithNewHRI() throws IOException {
-    if (!isMetaHRIUpdated()) {
-      LOG.info("Meta has HRI with HTDs. Updating meta now.");
-      try {
-        MetaEditor.updateMetaWithNewRegionInfo(this);
-        LOG.info("Meta updated with new HRI.");
-        return true;
-      } catch (IOException e) {
-        throw new RuntimeException("Update Meta with nw HRI failed. Master startup aborted.");
-      }
-    }
-    LOG.info("Meta already up-to date with new HRI.");
-    return true;
   }
 
   /**
@@ -959,7 +916,7 @@ implements HMasterInterface, HMasterRegionInterface, MasterServices, Server {
     HRegionInfo[] hRegionInfos = null;
     if (splitKeys == null || splitKeys.length == 0) {
       hRegionInfos = new HRegionInfo[]{
-          new HRegionInfo(hTableDescriptor.getName(), null, null)};
+          new HRegionInfo(hTableDescriptor, null, null)};
     } else {
       int numRegions = splitKeys.length + 1;
       hRegionInfos = new HRegionInfo[numRegions];
@@ -968,7 +925,7 @@ implements HMasterInterface, HMasterRegionInterface, MasterServices, Server {
       for (int i = 0; i < numRegions; i++) {
         endKey = (i == splitKeys.length) ? null : splitKeys[i];
         hRegionInfos[i] =
-            new HRegionInfo(hTableDescriptor.getName(), startKey, endKey);
+            new HRegionInfo(hTableDescriptor, startKey, endKey);
         startKey = endKey;
       }
     }
@@ -1090,7 +1047,7 @@ implements HMasterInterface, HMasterRegionInterface, MasterServices, Server {
           if (pair == null) {
             return false;
           }
-          if (!Bytes.equals(pair.getFirst().getTableName(), tableName)) {
+          if (!Bytes.equals(pair.getFirst().getTableDesc().getName(), tableName)) {
             return false;
           }
           result.set(pair);
@@ -1380,7 +1337,7 @@ implements HMasterInterface, HMasterRegionInterface, MasterServices, Server {
   throws IOException {
     Pair<HRegionInfo, ServerName> pair =
       MetaReader.getRegion(this.catalogTracker, regionName);
-    if (pair == null) throw new UnknownRegionException(Bytes.toString(regionName));
+    if (pair == null) throw new UnknownRegionException(Bytes.toStringBinary(regionName));
     HRegionInfo hri = pair.getFirst();
     if (cpHost != null) {
       if (cpHost.preUnassign(hri, force)) {
@@ -1397,39 +1354,6 @@ implements HMasterInterface, HMasterRegionInterface, MasterServices, Server {
       cpHost.postUnassign(hri, force);
     }
   }
-
-  /**
-   * Get HTD array for given tables
-   * @param tableNames
-   * @return HTableDescriptor[]
-   */
-  public HTableDescriptor[] getHTableDescriptors(List<String> tableNames) {
-    return this.assignmentManager.getHTableDescriptors(tableNames);
-  }
-
-  /**
-   * Get all table descriptors
-   * @return HTableDescriptor[]
-   */
-  public HTableDescriptor[] getHTableDescriptors() {
-    return this.assignmentManager.getHTableDescriptors();
-  }
-
-  /**
-   * Get a HTD for a given table name
-   * @param tableName
-   * @return HTableDescriptor
-   */
-/*
-  public HTableDescriptor getHTableDescriptor(byte[] tableName) {
-    if (tableName != null && tableName.length > 0) {
-      return this.assignmentManager.getTableDescriptor(
-          Bytes.toString(tableName));
-    }
-    return null;
-  }
-*/
-
 
   /**
    * Compute the average load across all region servers.

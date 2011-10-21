@@ -39,6 +39,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HRegionInfo;
+import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.BeforeClass;
@@ -464,7 +465,7 @@ public class TestDefaultLoadBalancer {
       Bytes.putInt(start, 0, numRegions << 1);
       Bytes.putInt(end, 0, (numRegions << 1) + 1);
       HRegionInfo hri = new HRegionInfo(
-          Bytes.toBytes("table" + i), start, end,
+          new HTableDescriptor(Bytes.toBytes("table" + i)), start, end,
           false, regionId++);
       regions.add(hri);
     }

@@ -96,9 +96,9 @@ public class TestBlocksRead extends HBaseTestCase {
           HColumnDescriptor.DEFAULT_REPLICATION_SCOPE);
       htd.addFamily(familyDesc);
     }
-    HRegionInfo info = new HRegionInfo(htd.getName(), null, null, false);
+    HRegionInfo info = new HRegionInfo(htd, null, null, false);
     Path path = new Path(DIR + callingMethod);
-    region = HRegion.createHRegion(info, path, conf, htd);
+    region = HRegion.createHRegion(info, path, conf);
     blockCache = new CacheConfig(conf).getBlockCache();
   }
 

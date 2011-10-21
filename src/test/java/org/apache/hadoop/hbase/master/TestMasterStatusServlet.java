@@ -31,12 +31,14 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.*;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.HRegionInfo;
+import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.master.AssignmentManager.RegionState;
 import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.master.ServerManager;
-import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.apache.hbase.tmpl.master.AssignmentManagerStatusTmpl;
@@ -61,9 +63,9 @@ public class TestMasterStatusServlet {
     new ServerName("fakehost", 12345, 1234567890);
   static final HTableDescriptor FAKE_TABLE =
     new HTableDescriptor("mytable");
-  static final HRegionInfo FAKE_HRI =
-      new HRegionInfo(FAKE_TABLE.getName(), Bytes.toBytes("a"), Bytes.toBytes("b"));
-
+  static final HRegionInfo FAKE_REGION =
+    new HRegionInfo(FAKE_TABLE, Bytes.toBytes("a"), Bytes.toBytes("b"));
+  
   @Before
   public void setupBasicMocks() {
     conf = HBaseConfiguration.create();
@@ -82,7 +84,7 @@ public class TestMasterStatusServlet {
     NavigableMap<String, RegionState> regionsInTransition =
       Maps.newTreeMap();
     regionsInTransition.put("r1",
-        new RegionState(FAKE_HRI, RegionState.State.CLOSING, 12345L, FAKE_HOST));
+        new RegionState(FAKE_REGION, RegionState.State.CLOSING, 12345L, FAKE_HOST));        
     Mockito.doReturn(regionsInTransition).when(am).getRegionsInTransition();
     Mockito.doReturn(am).when(master).getAssignmentManager();
     
@@ -159,7 +161,7 @@ public class TestMasterStatusServlet {
     NavigableMap<String, RegionState> regionsInTransition =
       Maps.newTreeMap();
     for (byte i = 0; i < 100; i++) {
-      HRegionInfo hri = new HRegionInfo(FAKE_TABLE.getName(),
+      HRegionInfo hri = new HRegionInfo(FAKE_TABLE,
           new byte[]{i}, new byte[]{(byte) (i+1)});
       regionsInTransition.put(hri.getEncodedName(),
           new RegionState(hri, RegionState.State.CLOSING, 12345L, FAKE_HOST));

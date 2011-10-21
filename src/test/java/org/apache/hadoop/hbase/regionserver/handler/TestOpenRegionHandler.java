@@ -80,7 +80,7 @@ public class TestOpenRegionHandler {
    */
   @Before
   public void setupHRI() {
-    TEST_HRI = new HRegionInfo(TEST_HTD.getName(),
+    TEST_HRI = new HRegionInfo(TEST_HTD,
       Bytes.toBytes(testIndex),
       Bytes.toBytes(testIndex + 1));
     testIndex++;
@@ -103,7 +103,7 @@ public class TestOpenRegionHandler {
     final HRegionInfo hri = TEST_HRI;
     HRegion region =
          HRegion.createHRegion(hri, HBaseTestingUtility.getTestDir(), HTU
-            .getConfiguration(), htd);
+            .getConfiguration());
     assertNotNull(region);
     OpenRegionHandler handler = new OpenRegionHandler(server, rss, hri) {
       HRegion openRegion() {
@@ -141,7 +141,7 @@ public class TestOpenRegionHandler {
 
     // Create the handler
     OpenRegionHandler handler =
-      new OpenRegionHandler(server, rsServices, TEST_HRI, TEST_HTD) {
+      new OpenRegionHandler(server, rsServices, TEST_HRI) {
         @Override
         HRegion openRegion() {
           // Fake failure of opening a region due to an IOE, which is caught
@@ -166,7 +166,7 @@ public class TestOpenRegionHandler {
 
     // Create the handler
     OpenRegionHandler handler =
-      new OpenRegionHandler(server, rsServices, TEST_HRI, TEST_HTD) {
+      new OpenRegionHandler(server, rsServices, TEST_HRI) {
         @Override
         boolean updateMeta(final HRegion r) {
           // Fake failure of updating META

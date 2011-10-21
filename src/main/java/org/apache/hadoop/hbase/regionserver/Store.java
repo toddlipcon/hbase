@@ -139,7 +139,7 @@ public class Store implements HeapSize {
 
   // Comparing KeyValues
   final KeyValue.KVComparator comparator;
-
+  
   /**
    * Constructor
    * @param basedir qualified path under which the region directory lives;
@@ -195,6 +195,7 @@ public class Store implements HeapSize {
 
     // Setting up cache configuration for this family
     this.cacheConf = new CacheConfig(conf, family);
+
     this.blockingStoreFileCount =
       conf.getInt("hbase.hstore.blockingStoreFiles", 7);
 

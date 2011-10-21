@@ -127,7 +127,7 @@ public class TestReplicationSourceManager {
     col.setScope(HConstants.REPLICATION_SCOPE_LOCAL);
     htd.addFamily(col);
 
-    hri = new HRegionInfo(htd.getName(), r1, r2);
+    hri = new HRegionInfo(htd, r1, r2);
 
 
   }
@@ -164,8 +164,7 @@ public class TestReplicationSourceManager {
       URLEncoder.encode("regionserver:60020", "UTF8"));
 
     manager.init();
-    HTableDescriptor htd = new HTableDescriptor();
-    htd.addFamily(new HColumnDescriptor(f1));
+
     // Testing normal log rolling every 20
     for(long i = 1; i < 101; i++) {
       if(i > 1 && i % 20 == 0) {
@@ -174,7 +173,7 @@ public class TestReplicationSourceManager {
       LOG.info(i);
       HLogKey key = new HLogKey(hri.getRegionName(), test, seq++,
           System.currentTimeMillis(), HConstants.DEFAULT_CLUSTER_ID);
-      hlog.append(hri, key, edit, htd);
+      hlog.append(hri, key, edit);
     }
 
     // Simulate a rapid insert that's followed
@@ -187,7 +186,7 @@ public class TestReplicationSourceManager {
     for (int i = 0; i < 3; i++) {
       HLogKey key = new HLogKey(hri.getRegionName(), test, seq++,
           System.currentTimeMillis(), HConstants.DEFAULT_CLUSTER_ID);
-      hlog.append(hri, key, edit, htd);
+      hlog.append(hri, key, edit);
     }
 
     assertEquals(6, manager.getHLogs().get(slaveId).size());
@@ -199,7 +198,7 @@ public class TestReplicationSourceManager {
 
     HLogKey key = new HLogKey(hri.getRegionName(), test, seq++,
         System.currentTimeMillis(), HConstants.DEFAULT_CLUSTER_ID);
-    hlog.append(hri, key, edit, htd);
+    hlog.append(hri, key, edit);
 
     assertEquals(1, manager.getHLogs().size());
 

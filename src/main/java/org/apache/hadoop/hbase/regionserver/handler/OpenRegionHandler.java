@@ -24,7 +24,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.Server;
 import org.apache.hadoop.hbase.executor.EventHandler;
@@ -82,7 +81,9 @@ public class OpenRegionHandler extends EventHandler {
   public void process() throws IOException {
     try {
       final String name = regionInfo.getRegionNameAsString();
+      LOG.debug("Processing open of " + name);
       if (this.server.isStopped() || this.rsServices.isStopping()) {
+        LOG.info("Server stopping or stopped, skipping open of " + name);
         return;
       }
       final String encodedName = regionInfo.getEncodedName();
@@ -200,7 +201,6 @@ public class OpenRegionHandler extends EventHandler {
         Thread.currentThread().interrupt();
       }
     }
-
     // Was there an exception opening the region?  This should trigger on
     // InterruptedException too.  If so, we failed.  Even if tickle opening fails
     // then it is a failure.

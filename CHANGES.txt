@@ -10,6 +10,7 @@ Release 0.92.0 - Unreleased
                instead of wrapping in RuntimeException (Ted Yu via garyh)
    HBASE-3629  Update our thrift to 0.6 (Moaz Reyad)
    HBASE-1502  Remove need for heartbeats in HBase
+<<<<<<< HEAD
    HBASE-451   Remove HTableDescriptor from HRegionInfo (Subbu M Iyer)
    HBASE-451   Remove HTableDescriptor from HRegionInfo
                addendum that fixes TestTableMapReduce
@@ -23,6 +24,8 @@ Release 0.92.0 - Unreleased
    HBASE-4247  Add isAborted method to the Abortable interface
                (Akash Ashok)
    HBASE-4503  Purge deprecated HBaseClusterTestCase
+=======
+>>>>>>> parent of 80b6849... HBASE-451 Remove HTableDescriptor from HRegionInfo
 
   BUG FIXES
    HBASE-3280  YouAreDeadException being swallowed in HRS getMaster

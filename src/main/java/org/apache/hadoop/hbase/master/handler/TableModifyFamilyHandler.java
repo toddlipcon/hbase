@@ -28,7 +28,6 @@ import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.InvalidFamilyOperationException;
 import org.apache.hadoop.hbase.Server;
 import org.apache.hadoop.hbase.catalog.MetaEditor;
-import org.apache.hadoop.hbase.master.AssignmentManager;
 import org.apache.hadoop.hbase.master.MasterServices;
 import org.apache.hadoop.hbase.util.Bytes;
 
@@ -48,23 +47,20 @@ public class TableModifyFamilyHandler extends TableEventHandler {
 
   @Override
   protected void handleTableOperation(List<HRegionInfo> regions) throws IOException {
-    AssignmentManager am = this.masterServices.getAssignmentManager();
-    HTableDescriptor htd = am.getTableDescriptor(Bytes.toString(tableName));
+    HTableDescriptor htd = regions.get(0).getTableDesc();
     byte [] familyName = familyDesc.getName();
-    if (htd == null) {
-      throw new IOException("Modify Family operation could not be completed as " +
-          "HTableDescritor is missing for table = "
-          + Bytes.toString(tableName));
-    }
     if(!htd.hasFamily(familyName)) {
       throw new InvalidFamilyOperationException("Family '" +
         Bytes.toString(familyName) + "' doesn't exists so cannot be modified");
     }
-    // Update table descriptor in HDFS
-    htd = this.masterServices.getMasterFileSystem()
-        .modifyColumn(tableName, familyDesc);
-    // Update in-memory descriptor cache
-    am.updateTableDesc(Bytes.toString(tableName), htd);
+    for(HRegionInfo hri : regions) {
+      // Update the HTD
+      hri.getTableDesc().addFamily(familyDesc);
+      // Update region in META
+      MetaEditor.updateRegionInfo(this.server.getCatalogTracker(), hri);
+      // Update region info in FS
+      this.masterServices.getMasterFileSystem().updateRegionInfo(hri);
+    }
   }
   @Override
   public String toString() {
@@ -78,5 +74,4 @@ public class TableModifyFamilyHandler extends TableEventHandler {
     }
     return getClass().getSimpleName() + "-" + name + "-" + getSeqid() + "-" + tableNameStr + "-" + family;
   }
-
 }

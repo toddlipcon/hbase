@@ -23,6 +23,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import org.apache.hadoop.hbase.HRegionInfo;
+import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.util.HBaseFsck.HbckInfo;
 import org.apache.hadoop.hbase.util.HBaseFsck.MetaEntry;
 import org.junit.Test;
@@ -32,16 +33,17 @@ import org.junit.Test;
  */
 public class TestHBaseFsckComparator {
 
-  byte[] table = Bytes.toBytes("table1");
-  byte[] table2 = Bytes.toBytes("table2");
+  HTableDescriptor table = new HTableDescriptor("table1");
+  HTableDescriptor table2 = new HTableDescriptor("table2");
   byte[] keyStart = Bytes.toBytes("");
   byte[] keyA = Bytes.toBytes("A");
   byte[] keyB = Bytes.toBytes("B");
   byte[] keyC = Bytes.toBytes("C");
   byte[] keyEnd = Bytes.toBytes("");
 
-  static HbckInfo genHbckInfo(byte[] table, byte[] start, byte[] end, int time) {
-    return new HbckInfo(new MetaEntry(new HRegionInfo(table, start, end), null,
+  static HbckInfo genHbckInfo(HTableDescriptor htd,
+      byte[] start, byte[] end, int time) {
+    return new HbckInfo(new MetaEntry(new HRegionInfo(htd, start, end), null,
         time));
   }
 

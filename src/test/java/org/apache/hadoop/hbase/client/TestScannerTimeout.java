@@ -22,6 +22,8 @@ package org.apache.hadoop.hbase.client;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
+import java.io.IOException;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -90,7 +92,6 @@ public class TestScannerTimeout {
    */
   @Test(timeout=300000)
   public void test2481() throws Exception {
-    LOG.info("START ************ test2481");
     Scan scan = new Scan();
     HTable table =
       new HTable(new Configuration(TEST_UTIL.getConfiguration()), TABLE_NAME);
@@ -111,7 +112,6 @@ public class TestScannerTimeout {
       return;
     }
     fail("We should be timing out");
-    LOG.info("END ************ test2481");
   }
 
   /**
@@ -121,7 +121,6 @@ public class TestScannerTimeout {
    */
   @Test(timeout=300000)
   public void test2772() throws Exception {
-    LOG.info("START************ test2772");
     HRegionServer rs = TEST_UTIL.getRSForFirstRegionInTable(TABLE_NAME);
     Scan scan = new Scan();
     // Set a very high timeout, we want to test what happens when a RS
@@ -138,8 +137,6 @@ public class TestScannerTimeout {
     Result[] results = r.next(NB_ROWS);
     assertEquals(NB_ROWS, results.length);
     r.close();
-    LOG.info("END ************ test2772");
-
   }
   
   /**
@@ -149,24 +146,25 @@ public class TestScannerTimeout {
    */
   @Test(timeout=300000)
   public void test3686a() throws Exception {
-    LOG.info("START ************ TEST3686A---1");
     HRegionServer rs = TEST_UTIL.getRSForFirstRegionInTable(TABLE_NAME);
-    LOG.info("START ************ TEST3686A---1111");
-
     Scan scan = new Scan();
     scan.setCaching(SCANNER_CACHING);
     LOG.info("************ TEST3686A");
-    MetaReader.fullScanMetaAndPrint(TEST_UTIL.getHBaseCluster().getMaster().getCatalogTracker());
+    MetaReader.fullScan(TEST_UTIL.getHBaseCluster().getMaster().getCatalogTracker(),
+        new MetaReader.Visitor() {
+          
+          @Override
+          public boolean visit(Result r) throws IOException {
+            LOG.info("result: " + r);
+            return true;
+          }
+        });
     HTable table = new HTable(TEST_UTIL.getConfiguration(), TABLE_NAME);
     LOG.info("START ************ TEST3686A---22");
 
     ResultScanner r = table.getScanner(scan);
-    LOG.info("START ************ TEST3686A---33");
-
     int count = 1;
     r.next();
-    LOG.info("START ************ TEST3686A---44");
-
     // Kill after one call to next(), which got 5 rows.
     rs.abort("die!");
     while(r.next() != null) {
@@ -174,7 +172,6 @@ public class TestScannerTimeout {
     }
     assertEquals(NB_ROWS, count);
     r.close();
-    LOG.info("************ END TEST3686A");
   }
   
   /**
@@ -185,7 +182,6 @@ public class TestScannerTimeout {
    */
   @Test(timeout=300000)
   public void test3686b() throws Exception {
-    LOG.info("START ************ test3686b");
     HRegionServer rs = TEST_UTIL.getRSForFirstRegionInTable(TABLE_NAME);
     Scan scan = new Scan();
     scan.setCaching(SCANNER_CACHING);
@@ -207,7 +203,5 @@ public class TestScannerTimeout {
     }
     assertEquals(NB_ROWS, count);
     r.close();
-    LOG.info("END ************ END test3686b");
-
   }
 }

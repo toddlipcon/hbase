@@ -137,7 +137,6 @@ public class HBaseAdmin implements Abortable, Closeable {
     CatalogTracker ct = null;
     try {
       ct = new CatalogTracker(this.conf);
-
       ct.start();
     } catch (InterruptedException e) {
       // Let it out as an IOE for now until we redo all so tolerate IEs
@@ -376,7 +375,7 @@ public class HBaseAdmin implements Abortable, Closeable {
           if (null == info) {
             return true;
           }
-          if (!(Bytes.equals(info.getTableName(), desc.getName()))) {
+          if (!(Bytes.equals(info.getTableDesc().getName(), desc.getName()))) {
             return false;
           }
           String hostAndPort = null;
@@ -493,22 +492,8 @@ public class HBaseAdmin implements Abortable, Closeable {
         // Get a batch at a time.
         Result values = server.next(scannerId);
 
-        // let us wait until .META. table is updated and
-        // HMaster removes the table from its HTableDescriptors
         if (values == null) {
-          boolean tableExists = false;
-          HTableDescriptor[] htds = getMaster().getHTableDescriptors();
-          if (htds != null && htds.length > 0) {
-            for (HTableDescriptor htd: htds) {
-              if (Bytes.equals(tableName, htd.getName())) {
-                tableExists = true;
-                break;
-              }
-            }
-          }
-          if (!tableExists) {
-            break;
-          }
+          break;
         }
       } catch (IOException ex) {
         if(tries == numRetries - 1) {           // no more tries left
@@ -1614,17 +1599,6 @@ public class HBaseAdmin implements Abortable, Closeable {
     if (this.connection != null) {
       this.connection.close();
     }
-  }
-
- /**
- * Get tableDescriptors
- * @param tableNames List of table names
- * @return HTD[] the tableDescriptor
- * @throws IOException if a remote or network exception occurs
- */
-  public HTableDescriptor[] getTableDescriptors(List<String> tableNames)
-  throws IOException {
-    return this.connection.getHTableDescriptors(tableNames);
   }
 
   /**

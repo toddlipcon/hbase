@@ -663,8 +663,7 @@ public class DefaultLoadBalancer implements LoadBalancer {
     HRegionInfo region) {
     List<ServerName> topServerNames = null;
     try {
-      HTableDescriptor tableDescriptor = getTableDescriptor(
-        region.getTableName());
+      HTableDescriptor tableDescriptor = region.getTableDesc();
       if (tableDescriptor != null) {
         HDFSBlocksDistribution blocksDistribution =
           HRegion.computeHDFSBlocksDistribution(config, tableDescriptor,
@@ -679,32 +678,6 @@ public class DefaultLoadBalancer implements LoadBalancer {
     
     return topServerNames;
   }
-
-  /**
-   * return HTableDescriptor for a given tableName
-   * @param tableName the table name
-   * @return HTableDescriptor
-   * @throws IOException
-   */
-  private HTableDescriptor getTableDescriptor(byte[] tableName)
-    throws IOException {
-    HTableDescriptor tableDescriptor = null;
-    try {
-      if ( this.services != null)
-      {
-        tableDescriptor = this.services.getTableDescriptors().
-          get(Bytes.toString(tableName));
-    }
-    } catch (TableExistsException tee) {
-      LOG.debug("TableExistsException during getTableDescriptors." +
-        " Current table name = " + tableName , tee);
-    } catch (FileNotFoundException fnfe) {
-      LOG.debug("FileNotFoundException during getTableDescriptors." +
-        " Current table name = " + tableName , fnfe);
-    }
-
-    return tableDescriptor;
-    }
 
   /**
    * Map hostname to ServerName, The output ServerName list will have the same

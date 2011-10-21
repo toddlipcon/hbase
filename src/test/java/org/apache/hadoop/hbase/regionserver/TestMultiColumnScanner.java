@@ -280,10 +280,9 @@ public class TestMultiColumnScanner {
     HTableDescriptor htd = new HTableDescriptor(tableName);
     htd.addFamily(hcd);
     HRegionInfo info =
-        new HRegionInfo(Bytes.toBytes(tableName), null, null, false);
+        new HRegionInfo(htd, null, null, false);
     HRegion region = HRegion.createHRegion(
-        info, HBaseTestingUtility.getTestDir(), TEST_UTIL.getConfiguration(),
-        htd);
+        info, HBaseTestingUtility.getTestDir(), TEST_UTIL.getConfiguration());
     return region;
   }
 

@@ -51,9 +51,9 @@ public class TestMultipleColumnPrefixFilter {
     HTableDescriptor htd = new HTableDescriptor("TestMultipleColumnPrefixFilter");
     htd.addFamily(new HColumnDescriptor(family));
     // HRegionInfo info = new HRegionInfo(htd, null, null, false);
-    HRegionInfo info = new HRegionInfo(htd.getName(), null, null, false);
+    HRegionInfo info = new HRegionInfo(htd, null, null, false);
     HRegion region = HRegion.createHRegion(info, HBaseTestingUtility.
-        getTestDir(), TEST_UTIL.getConfiguration(), htd);
+        getTestDir(), TEST_UTIL.getConfiguration());
 
     List<String> rows = generateRandomWords(100, "row");
     List<String> columns = generateRandomWords(10000, "column");
@@ -110,9 +110,9 @@ public class TestMultipleColumnPrefixFilter {
     HTableDescriptor htd = new HTableDescriptor("TestMultipleColumnPrefixFilter");
     htd.addFamily(new HColumnDescriptor(family1));
     htd.addFamily(new HColumnDescriptor(family2));
-    HRegionInfo info = new HRegionInfo(htd.getName(), null, null, false);
+    HRegionInfo info = new HRegionInfo(htd, null, null, false);
     HRegion region = HRegion.createHRegion(info, HBaseTestingUtility.
-        getTestDir(), TEST_UTIL.getConfiguration(), htd);
+        getTestDir(), TEST_UTIL.getConfiguration());
 
     List<String> rows = generateRandomWords(100, "row");
     List<String> columns = generateRandomWords(10000, "column");
@@ -173,9 +173,9 @@ public class TestMultipleColumnPrefixFilter {
     String family = "Family";
     HTableDescriptor htd = new HTableDescriptor("TestMultipleColumnPrefixFilter");
     htd.addFamily(new HColumnDescriptor(family));
-    HRegionInfo info = new HRegionInfo(htd.getName(), null, null, false);
+    HRegionInfo info = new HRegionInfo(htd, null, null, false);
     HRegion region = HRegion.createHRegion(info, HBaseTestingUtility.
-        getTestDir(), TEST_UTIL.getConfiguration(),htd);
+        getTestDir(), TEST_UTIL.getConfiguration());
 
     List<String> rows = generateRandomWords(100, "row");
     List<String> columns = generateRandomWords(10000, "column");

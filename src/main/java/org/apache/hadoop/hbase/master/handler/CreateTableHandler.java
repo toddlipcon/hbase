@@ -133,12 +133,6 @@ public class CreateTableHandler extends EventHandler {
 
   private void handleCreateTable() throws IOException, KeeperException {
 
-    // TODO: Currently we make the table descriptor and as side-effect the
-    // tableDir is created.  Should we change below method to be createTable
-    // where we create table in tmp dir with its table descriptor file and then
-    // do rename to move it into place?
-    FSUtils.createTableDescriptor(this.hTableDescriptor, this.conf);
-
     List<HRegionInfo> regionInfos = new ArrayList<HRegionInfo>();
     final int batchSize =
       this.conf.getInt("hbase.master.createtable.batchsize", 100);
@@ -148,7 +142,7 @@ public class CreateTableHandler extends EventHandler {
       // 1. Create HRegion
       HRegion region = HRegion.createHRegion(newRegion,
         this.fileSystemManager.getRootDir(), this.conf,
-        this.hTableDescriptor, hlog);
+        hlog);
       if (hlog == null) {
         hlog = region.getLog();
       }

@@ -174,21 +174,18 @@ public class HBaseFsck {
     if (!checkMetaOnly) {
       AtomicInteger numSkipped = new AtomicInteger(0);
       HTableDescriptor[] allTables = getTables(numSkipped);
-      errors.print("Number of Tables: " +
-          (allTables == null ? 0 : allTables.length));
+      errors.print("Number of Tables: " + allTables.length);
       if (details) {
         if (numSkipped.get() > 0) {
           errors.detail("Number of Tables in flux: " + numSkipped.get());
         }
-        if (allTables != null && allTables.length > 0) {
-          for (HTableDescriptor td : allTables) {
+        for (HTableDescriptor td : allTables) {
           String tableName = td.getNameAsString();
           errors.detail("  Table: " + tableName + "\t" +
                              (td.isReadOnly() ? "ro" : "rw") + "\t" +
                              (td.isRootRegion() ? "ROOT" :
                               (td.isMetaRegion() ? "META" : "    ")) + "\t" +
                              " families: " + td.getFamilies().size());
-          }
         }
       }
     }
@@ -277,7 +274,7 @@ public class HBaseFsck {
    * @throws KeeperException
    */
   private boolean isTableDisabled(HRegionInfo regionInfo) {
-    return disabledTables.contains(regionInfo.getTableName());
+    return disabledTables.contains(regionInfo.getTableDesc().getName());
   }
 
   /**
@@ -553,7 +550,7 @@ public class HBaseFsck {
       if (hbi.deployedOn.size() == 0) continue;
 
       // We should be safe here
-      String tableName = hbi.metaEntry.getTableNameAsString();
+      String tableName = hbi.metaEntry.getTableDesc().getNameAsString();
       TInfo modTInfo = tablesInfo.get(tableName);
       if (modTInfo == null) {
         modTInfo = new TInfo(tableName);
@@ -780,8 +777,8 @@ public class HBaseFsck {
    * @return tables that have not been modified recently
    * @throws IOException if an error is encountered
    */
-   HTableDescriptor[] getTables(AtomicInteger numSkipped) {
-    List<String> tableNames = new ArrayList<String>();
+  HTableDescriptor[] getTables(AtomicInteger numSkipped) {
+    TreeSet<HTableDescriptor> uniqueTables = new TreeSet<HTableDescriptor>();
     long now = System.currentTimeMillis();
 
     for (HbckInfo hbi : regionInfo.values()) {
@@ -791,26 +788,14 @@ public class HBaseFsck {
       // pick only those tables that were not modified in the last few milliseconds.
       if (info != null && info.getStartKey().length == 0 && !info.isMetaRegion()) {
         if (info.modTime + timelag < now) {
-          tableNames.add(info.getTableNameAsString());
+          uniqueTables.add(info.getTableDesc());
         } else {
           numSkipped.incrementAndGet(); // one more in-flux table
         }
       }
     }
-    return getHTableDescriptors(tableNames);
+    return uniqueTables.toArray(new HTableDescriptor[uniqueTables.size()]);
   }
-
-   HTableDescriptor[] getHTableDescriptors(List<String> tableNames) {
-    HTableDescriptor[] htd = null;
-     try {
-       LOG.info("getHTableDescriptors == tableNames => " + tableNames);
-       htd = new HBaseAdmin(conf).getTableDescriptors(tableNames);
-     } catch (IOException e) {
-       LOG.debug("Exception getting table descriptors", e);
-     }
-     return htd;
-  }
-
 
   /**
    * Gets the entry in regionInfo corresponding to the the given encoded
@@ -1005,7 +990,8 @@ public class HBaseFsck {
       }
 
       int tableCompare = RegionSplitCalculator.BYTES_COMPARATOR.compare(
-          l.metaEntry.getTableName(), r.metaEntry.getTableName());
+          l.metaEntry.getTableDesc().getName(),
+          r.metaEntry.getTableDesc().getName());
       if (tableCompare != 0) {
         return tableCompare;
       }

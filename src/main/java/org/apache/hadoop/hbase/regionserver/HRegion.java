@@ -204,8 +204,6 @@ public class HRegion implements HeapSize { // , Writable{
   final Path regiondir;
   KeyValue.KVComparator comparator;
 
-  private Pair<Long,Long> lastCompactInfo = null;
-
   /*
    * Data structure of write state flags used coordinating flushes,
    * compactions and closes.
@@ -246,11 +244,11 @@ public class HRegion implements HeapSize { // , Writable{
 
   final WriteState writestate = new WriteState();
 
-  long memstoreFlushSize;
+  final long memstoreFlushSize;
   private volatile long lastFlushTime;
   final RegionServerServices rsServices;
   private List<Pair<Long, Long>> recentFlushes = new ArrayList<Pair<Long,Long>>();
-  private long blockingMemStoreSize;
+  private final long blockingMemStoreSize;
   final long threadWakeFrequency;
   // Used to guard closes
   final ReentrantReadWriteLock lock =
@@ -272,7 +270,6 @@ public class HRegion implements HeapSize { // , Writable{
    * Name of the region info file that resides just under the region directory.
    */
   public final static String REGIONINFO_FILE = ".regioninfo";
-  private HTableDescriptor htableDescriptor = null;
   private RegionSplitPolicy splitPolicy;
 
   /**
@@ -331,14 +328,14 @@ public class HRegion implements HeapSize { // , Writable{
         10 * 1000);
     String encodedNameStr = this.regionInfo.getEncodedName();
     this.regiondir = getRegionDir(this.tableDir, encodedNameStr);
-    try {
-      LOG.info("Setting table desc from HDFS. Region = "
-        + this.regionInfo.getTableNameAsString());
-      loadHTableDescriptor(tableDir);
-      LOG.info(" This HTD from HDFS  == " + this.htableDescriptor);
-    } catch (IOException ioe) {
-      LOG.error("Could not instantiate region as error loading HTableDescriptor");
+    long flushSize = regionInfo.getTableDesc().getMemStoreFlushSize();
+    if (flushSize == HTableDescriptor.DEFAULT_MEMSTORE_FLUSH_SIZE) {
+      flushSize = conf.getLong("hbase.hregion.memstore.flush.size",
+                      HTableDescriptor.DEFAULT_MEMSTORE_FLUSH_SIZE);
     }
+    this.memstoreFlushSize = flushSize;
+    this.blockingMemStoreSize = this.memstoreFlushSize *
+      conf.getLong("hbase.hregion.memstore.block.multiplier", 2);
     // don't initialize coprocessors if not running within a regionserver
     // TODO: revisit if coprocessors should load in other cases
     if (rsServices != null) {
@@ -348,40 +345,6 @@ public class HRegion implements HeapSize { // , Writable{
       // Write out region name as string and its encoded name.
       LOG.debug("Instantiated " + this);
     }
-  }
-
-  private void loadHTableDescriptor(Path tableDir) throws IOException {
-    LOG.debug("Assigning tabledesc from .tableinfo for region = "
-        + this.regionInfo.getRegionNameAsString());
-    // load HTableDescriptor
-    this.htableDescriptor = FSUtils.getTableDescriptor(tableDir, fs);
-
-    if (this.htableDescriptor != null) {
-      setHTableSpecificConf();
-    } else {
-      throw new IOException("Table description missing in " +
-          ".tableinfo. Cannot create new region."
-          + " current region is == " + this.regionInfo.toString());
-    }
-
-  }
-
-  private void setHTableSpecificConf() {
-    if (this.htableDescriptor != null) {
-      LOG.info("Setting up tabledescriptor config now ...");
-      long flushSize = this.htableDescriptor.getMemStoreFlushSize();
-      if (flushSize == HTableDescriptor.DEFAULT_MEMSTORE_FLUSH_SIZE) {
-        flushSize = conf.getLong("hbase.hregion.memstore.flush.size",
-            HTableDescriptor.DEFAULT_MEMSTORE_FLUSH_SIZE);
-      }
-      this.memstoreFlushSize = flushSize;
-      this.blockingMemStoreSize = this.memstoreFlushSize *
-          conf.getLong("hbase.hregion.memstore.block.multiplier", 2);
-    }
-  }
-
-  public void setHtableDescriptor(HTableDescriptor htableDescriptor) {
-    this.htableDescriptor = htableDescriptor;
   }
 
   /**
@@ -424,7 +387,7 @@ public class HRegion implements HeapSize { // , Writable{
 
     // Load in all the HStores.  Get maximum seqid.
     long maxSeqId = -1;
-    for (HColumnDescriptor c : this.htableDescriptor.getFamilies()) {
+    for (HColumnDescriptor c : this.regionInfo.getTableDesc().getFamilies()) {
       status.setStatus("Instantiating store for column family " + c);
       Store store = instantiateHStore(this.tableDir, c);
       this.stores.put(c.getName(), store);
@@ -444,7 +407,7 @@ public class HRegion implements HeapSize { // , Writable{
     SplitTransaction.cleanupAnySplitDetritus(this);
     FSUtils.deleteDirectory(this.fs, new Path(regiondir, MERGEDIR));
 
-    this.writestate.setReadOnly(this.htableDescriptor.isReadOnly());
+    this.writestate.setReadOnly(this.regionInfo.getTableDesc().isReadOnly());
 
     this.writestate.compacting = 0;
     
@@ -528,8 +491,9 @@ public class HRegion implements HeapSize { // , Writable{
     String regionEncodedName) throws IOException {
     HDFSBlocksDistribution hdfsBlocksDistribution =
       new HDFSBlocksDistribution();
-    Path tablePath = FSUtils.getTablePath(FSUtils.getRootDir(conf),
-      tableDescriptor.getName());
+    Path tablePath = HTableDescriptor.getTableDir(
+        FSUtils.getRootDir(conf),
+        tableDescriptor.getName());
     FileSystem fs = tablePath.getFileSystem(conf);
          
     for (HColumnDescriptor family: tableDescriptor.getFamilies()) {
@@ -808,7 +772,7 @@ public class HRegion implements HeapSize { // , Writable{
 
   /** @return HTableDescriptor for this region */
   public HTableDescriptor getTableDesc() {
-    return this.htableDescriptor;
+    return this.regionInfo.getTableDesc();
   }
 
   /** @return HLog in use for this region */
@@ -1245,7 +1209,7 @@ public class HRegion implements HeapSize { // , Writable{
     //     log-sequence-ids can be safely ignored.
     if (wal != null) {
       wal.completeCacheFlush(this.regionInfo.getEncodedNameAsBytes(),
-        regionInfo.getTableName(), completeSequenceId,
+        regionInfo.getTableDesc().getName(), completeSequenceId,
         this.getRegionInfo().isMetaRegion());
     }
 
@@ -1356,7 +1320,7 @@ public class HRegion implements HeapSize { // , Writable{
   void prepareScanner(Scan scan) throws IOException {
     if(!scan.hasFamilies()) {
       // Adding all families to scanner
-      for(byte[] family: this.htableDescriptor.getFamiliesKeys()){
+      for(byte[] family: regionInfo.getTableDesc().getFamiliesKeys()){
         scan.addFamily(family);
       }
     }
@@ -1391,7 +1355,7 @@ public class HRegion implements HeapSize { // , Writable{
   private void prepareDelete(Delete delete) throws IOException {
     // Check to see if this is a deleteRow insert
     if(delete.getFamilyMap().isEmpty()){
-      for(byte [] family : this.htableDescriptor.getFamiliesKeys()){
+      for(byte [] family : regionInfo.getTableDesc().getFamiliesKeys()){
         // Don't eat the timestamp
         delete.deleteFamily(family, delete.getTimeStamp());
       }
@@ -1528,8 +1492,8 @@ public class HRegion implements HeapSize { // , Writable{
         // bunch up all edits across all column families into a
         // single WALEdit.
         addFamilyMapToWALEdit(familyMap, walEdit);
-        this.log.append(regionInfo, this.htableDescriptor.getName(),
-            walEdit, clusterId, now, this.htableDescriptor);
+        this.log.append(regionInfo, regionInfo.getTableDesc().getName(),
+            walEdit, clusterId, now);
       }
 
       // Now make changes to the memstore.
@@ -1800,8 +1764,8 @@ public class HRegion implements HeapSize { // , Writable{
 
       // Append the edit to WAL
       Put first = batchOp.operations[firstIndex].getFirst();
-      this.log.append(regionInfo, this.htableDescriptor.getName(),
-          walEdit, first.getClusterId(), now, this.htableDescriptor);
+      this.log.append(regionInfo, regionInfo.getTableDesc().getName(),
+          walEdit, first.getClusterId(), now);
 
       // ------------------------------------
       // STEP 4. Write back to memstore
@@ -2073,8 +2037,8 @@ public class HRegion implements HeapSize { // , Writable{
       // will contain uncommitted transactions.
       if (writeToWAL) {
         addFamilyMapToWALEdit(familyMap, walEdit);
-        this.log.append(regionInfo, this.htableDescriptor.getName(),
-            walEdit, clusterId, now, this.htableDescriptor);
+        this.log.append(regionInfo, regionInfo.getTableDesc().getName(),
+           walEdit, clusterId, now);
       }
 
       long addedSize = applyFamilyMapToMemstore(familyMap);
@@ -2888,6 +2852,10 @@ public class HRegion implements HeapSize { // , Writable{
     }
   }
 
+  public static HRegion createHRegion(final HRegionInfo info, final Path rootDir,
+      final Configuration conf) throws IOException {
+    return createHRegion(info, rootDir, conf, null);
+  }
   /**
    * Convenience method creating new HRegions. Used by createTable and by the
    * bootstrap code in the HMaster constructor.
@@ -2897,42 +2865,15 @@ public class HRegion implements HeapSize { // , Writable{
    * @param info Info for region to create.
    * @param rootDir Root directory for HBase instance
    * @param conf
-   * @param hTableDescriptor
    * @return new HRegion
    *
    * @throws IOException
    */
   public static HRegion createHRegion(final HRegionInfo info, final Path rootDir,
-      final Configuration conf, final HTableDescriptor hTableDescriptor)
+    final Configuration conf, HLog hlog)
   throws IOException {
-    return createHRegion(info, rootDir, conf, hTableDescriptor, null);
-  }
-
-  /**
-   * Convenience method creating new HRegions. Used by createTable.
-   * The {@link HLog} for the created region needs to be closed explicitly. 
-   * Use {@link HRegion#getLog()} to get access.
-   * 
-   * @param info Info for region to create.
-   * @param rootDir Root directory for HBase instance
-   * @param conf
-   * @param hTableDescriptor
-   * @param hlog shared HLog
-   * @return new HRegion
-   *
-   * @throws IOException
-   */
-  public static HRegion createHRegion(final HRegionInfo info, final Path rootDir,
-                                      final Configuration conf,
-                                      final HTableDescriptor hTableDescriptor,
-                                      final HLog hlog)
-      throws IOException {
-    LOG.info("creating HRegion " + info.getTableNameAsString()
-        + " HTD == " + hTableDescriptor + " RootDir = " + rootDir +
-        " Table name == " + info.getTableNameAsString());
-
     Path tableDir =
-        HTableDescriptor.getTableDir(rootDir, info.getTableName());
+      HTableDescriptor.getTableDir(rootDir, info.getTableDesc().getName());
     Path regionDir = HRegion.getRegionDir(tableDir, info.getEncodedName());
     FileSystem fs = FileSystem.get(conf);
     fs.mkdirs(regionDir);
@@ -2941,7 +2882,6 @@ public class HRegion implements HeapSize { // , Writable{
       effectiveHLog = new HLog(fs, new Path(regionDir, HConstants.HREGION_LOGDIR_NAME),
           new Path(regionDir, HConstants.HREGION_OLDLOGDIR_NAME), conf);     
     }
-    FSUtils.createTableDescriptor(fs, hTableDescriptor, tableDir);
     HRegion region = HRegion.newHRegion(tableDir,
         effectiveHLog, fs, conf, info, null);
     region.initialize();
@@ -2991,51 +2931,11 @@ public class HRegion implements HeapSize { // , Writable{
       throw new NullPointerException("Passed region info is null");
     }
     Path dir = HTableDescriptor.getTableDir(FSUtils.getRootDir(conf),
-      info.getTableName());
+      info.getTableDesc().getName());
     HRegion r = HRegion.newHRegion(dir, wal, FileSystem.get(conf), conf, info,
       rsServices);
     return r.openHRegion(reporter);
   }
-
-  public static HRegion openHRegion(Path tableDir, final HRegionInfo info,
-                                    final HLog wal, final Configuration conf)
-      throws IOException {
-    return openHRegion(tableDir, info, wal, conf, null, null);
-  }
-
-  /**
-   * Open a Region.
-   * @param tableDir Table directory
-   * @param info Info for region to be opened.
-   * @param wal HLog for region to use. This method will call
-   * HLog#setSequenceNumber(long) passing the result of the call to
-   * HRegion#getMinSequenceId() to ensure the log id is properly kept
-   * up.  HRegionStore does this every time it opens a new region.
-   * @param conf
-   * @param reporter An interface we can report progress against.
-   * @return new HRegion
-   *
-   * @throws IOException
-   */
-  public static HRegion openHRegion(final Path tableDir, final HRegionInfo info,
-                                    final HLog wal, final Configuration conf,
-                                    final RegionServerServices rsServices,
-                                    final CancelableProgressable reporter)
-      throws IOException {
-    LOG.info("HRegion.openHRegion Region name ==" + info.getRegionNameAsString());
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("Opening region: " + info);
-    }
-    if (info == null) {
-      throw new NullPointerException("Passed region info is null");
-    }
-    Path dir = HTableDescriptor.getTableDir(tableDir,
-        info.getTableName());
-    HRegion r = HRegion.newHRegion(dir, wal, FileSystem.get(conf), conf, info,
-        rsServices);
-    return r.openHRegion(reporter);
-  }
-
 
   /**
    * Open HRegion.
@@ -3056,7 +2956,7 @@ public class HRegion implements HeapSize { // , Writable{
   }
 
   private void checkCompressionCodecs() throws IOException {
-    for (HColumnDescriptor fam: this.htableDescriptor.getColumnFamilies()) {
+    for (HColumnDescriptor fam: regionInfo.getTableDesc().getColumnFamilies()) {
       CompressionTest.testCompression(fam.getCompression());
       CompressionTest.testCompression(fam.getCompactionCompression());
     }
@@ -3084,11 +2984,6 @@ public class HRegion implements HeapSize { // , Writable{
           HConstants.REGIONINFO_QUALIFIER,
           EnvironmentEdgeManager.currentTimeMillis(),
           Writables.getBytes(r.getRegionInfo())));
-      edits.add(new KeyValue(row, HConstants.CATALOG_FAMILY,
-          HConstants.META_MIGRATION_QUALIFIER,
-          EnvironmentEdgeManager.currentTimeMillis(),
-          Bytes.toBytes("true")));
-
       meta.put(HConstants.CATALOG_FAMILY, edits);
     } finally {
       meta.releaseRowLock(lid);
@@ -3127,7 +3022,7 @@ public class HRegion implements HeapSize { // , Writable{
    */
   public static Path getRegionDir(final Path rootdir, final HRegionInfo info) {
     return new Path(
-      HTableDescriptor.getTableDir(rootdir, info.getTableName()),
+      HTableDescriptor.getTableDir(rootdir, info.getTableDesc().getName()),
                                    info.getEncodedName());
   }
 
@@ -3205,8 +3100,8 @@ public class HRegion implements HeapSize { // , Writable{
    * @throws IOException
    */
   public static HRegion merge(HRegion a, HRegion b) throws IOException {
-    if (!a.getRegionInfo().getTableNameAsString().equals(
-        b.getRegionInfo().getTableNameAsString())) {
+    if (!a.getRegionInfo().getTableDesc().getNameAsString().equals(
+        b.getRegionInfo().getTableDesc().getNameAsString())) {
       throw new IOException("Regions do not belong to the same table");
     }
 
@@ -3259,8 +3154,7 @@ public class HRegion implements HeapSize { // , Writable{
          ? b.getEndKey()
          : a.getEndKey());
 
-    HRegionInfo newRegionInfo =
-        new HRegionInfo(tabledesc.getName(), startKey, endKey);
+    HRegionInfo newRegionInfo = new HRegionInfo(tabledesc, startKey, endKey);
     LOG.info("Creating new region " + newRegionInfo.toString());
     String encodedName = newRegionInfo.getEncodedName();
     Path newRegionDir = HRegion.getRegionDir(a.getTableDir(), encodedName);
@@ -3400,7 +3294,7 @@ public class HRegion implements HeapSize { // , Writable{
         checkFamily(family);
       }
     } else { // Adding all families to scanner
-      for (byte[] family: this.htableDescriptor.getFamiliesKeys()) {
+      for (byte[] family: regionInfo.getTableDesc().getFamiliesKeys()) {
         get.addFamily(family);
       }
     }
@@ -3609,9 +3503,8 @@ public class HRegion implements HeapSize { // , Writable{
           // Using default cluster id, as this can only happen in the orginating
           // cluster. A slave cluster receives the final value (not the delta)
           // as a Put.
-          this.log.append(regionInfo, this.htableDescriptor.getName(),
-              walEdits, HConstants.DEFAULT_CLUSTER_ID, now,
-              this.htableDescriptor);
+          this.log.append(regionInfo, regionInfo.getTableDesc().getName(),
+            walEdits, HConstants.DEFAULT_CLUSTER_ID, now);
         }
 
         size = this.addAndGetGlobalMemstoreSize(size);
@@ -3690,9 +3583,8 @@ public class HRegion implements HeapSize { // , Writable{
             // Using default cluster id, as this can only happen in the
             // orginating cluster. A slave cluster receives the final value (not
             // the delta) as a Put.
-            this.log.append(regionInfo, this.htableDescriptor.getName(),
-                walEdit, HConstants.DEFAULT_CLUSTER_ID, now,
-                this.htableDescriptor);
+            this.log.append(regionInfo, regionInfo.getTableDesc().getName(),
+                walEdit, HConstants.DEFAULT_CLUSTER_ID, now);
           }
 
           // Now request the ICV to the store, this will set the timestamp
@@ -3728,19 +3620,19 @@ public class HRegion implements HeapSize { // , Writable{
 
   private void checkFamily(final byte [] family)
   throws NoSuchColumnFamilyException {
-    if (!this.htableDescriptor.hasFamily(family)) {
+    if(!regionInfo.getTableDesc().hasFamily(family)) {
       throw new NoSuchColumnFamilyException("Column family " +
-          Bytes.toString(family) + " does not exist in region " + this
-          + " in table " + this.htableDescriptor);
-  	}
+          Bytes.toStringBinary(family) + " does not exist in region " + this
+            + " in table " + regionInfo.getTableDesc());
+    }
   }
 
   public static final long FIXED_OVERHEAD = ClassSize.align(
-      ClassSize.OBJECT +
-      ClassSize.ARRAY +
-      29 * ClassSize.REFERENCE + Bytes.SIZEOF_INT +
-      (4 * Bytes.SIZEOF_LONG) +
-      Bytes.SIZEOF_BOOLEAN);
+      ClassSize.OBJECT + // this
+      (4 * Bytes.SIZEOF_LONG) + // memstoreFlushSize, lastFlushTime, blockingMemStoreSize, threadWakeFrequency 
+      Bytes.SIZEOF_BOOLEAN + // splitRequest 
+      ClassSize.ARRAY + // splitPoint
+      (26 * ClassSize.REFERENCE));
 
   public static final long DEEP_OVERHEAD = FIXED_OVERHEAD +
       ClassSize.OBJECT + // closeLock
