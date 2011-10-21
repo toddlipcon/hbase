@@ -148,7 +148,7 @@ public final class HConstants {
 
   /** Default value for thread wake frequency */
   public static final int DEFAULT_THREAD_WAKE_FREQUENCY = 10 * 1000;
-
+  
   /** Parameter name for how often a region should should perform a major compaction */
   public static final String MAJOR_COMPACTION_PERIOD = "hbase.hregion.majorcompaction";
 
@@ -467,7 +467,7 @@ public final class HConstants {
    * timeout for each RPC
    */
   public static String HBASE_RPC_TIMEOUT_KEY = "hbase.rpc.timeout";
-
+  
   /**
    * Default value of {@link #HBASE_RPC_TIMEOUT_KEY}
    */
@@ -495,11 +495,6 @@ public final class HConstants {
     * Minimum percentage of free heap necessary for a successful cluster startup.
     */
   public static final float HBASE_CLUSTER_MINIMUM_MEMORY_THRESHOLD = 0.2f;
-
-  public static final List<String> HBASE_NON_USER_TABLE_DIRS = new ArrayList<String>(
-      Arrays.asList(new String[]{ HREGION_LOGDIR_NAME, HREGION_OLDLOGDIR_NAME,
-          CORRUPT_DIR_NAME, Bytes.toString(META_TABLE_NAME),
-          Bytes.toString(ROOT_TABLE_NAME), SPLIT_LOGDIR_NAME }));
 
   public static final Pattern CP_HTD_ATTR_KEY_PATTERN = Pattern.compile
       ("coprocessor\\$([0-9]+)", Pattern.CASE_INSENSITIVE);
