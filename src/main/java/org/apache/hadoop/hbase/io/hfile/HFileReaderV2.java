@@ -289,9 +289,17 @@ public class HFileReaderV2 extends AbstractHFileReader {
         new BlockCacheKey(name, dataBlockOffset,
             dataBlockEncoder.getEffectiveEncodingInCache(isCompaction),
             expectedBlockType);
-    IdLock.Entry lockEntry = offsetLock.getLockEntry(dataBlockOffset);
+
+    boolean useLock = false;
+    IdLock.Entry lockEntry = null;
+    blockLoads.incrementAndGet();
     try {
-      blockLoads.incrementAndGet();
+    while (true) {
+
+      if (useLock) {
+        lockEntry = offsetLock.getLockEntry(dataBlockOffset);
+      }
+
 
       // Check cache for block. If found return.
       if (cacheConf.isBlockCacheEnabled()) {
@@ -323,6 +331,11 @@ public class HFileReaderV2 extends AbstractHFileReader {
         }
         // Carry on, please load.
       }
+      if (!useLock) {
+        // check cache again with lock
+        useLock = true;
+        continue;
+      }
 
       // Load block from filesystem.
       long startTimeNs = System.nanoTime();
@@ -350,8 +363,11 @@ public class HFileReaderV2 extends AbstractHFileReader {
       }
 
       return hfileBlock;
+    }
     } finally {
-      offsetLock.releaseLockEntry(lockEntry);
+      if (lockEntry != null) {
+        offsetLock.releaseLockEntry(lockEntry);
+      }
     }
   }
 

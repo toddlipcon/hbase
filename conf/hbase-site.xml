@@ -22,4 +22,5 @@
  */
 -->
 <configuration>
+<property><name>hbase.ipc.warn.response.time</name><value>100000</value></property>
 </configuration>
