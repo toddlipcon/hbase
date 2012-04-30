@@ -55,6 +55,8 @@ public class Invocation extends VersionedWritable implements Configurable {
   // such as protobuf interfaces.
   private static final Map<Class<?>, Long>
     PROTOCOL_VERSION = new HashMap<Class<?>, Long>();
+  private static final Map<Class<?>, Integer>
+    METHOD_HASH_CACHE = new HashMap<Class<?>, Integer>();
 
   static {
     PROTOCOL_VERSION.put(ClientService.BlockingInterface.class,
@@ -100,8 +102,16 @@ public class Invocation extends VersionedWritable implements Configurable {
       } catch (IllegalAccessException ex) {
         throw new RuntimeException(ex);
       }
-      this.clientMethodsHash = ProtocolSignature.getFingerprint(
-        declaringClass.getMethods());
+      Integer hash;
+      synchronized (METHOD_HASH_CACHE) {
+        hash = METHOD_HASH_CACHE.get(declaringClass);
+        if (hash == null) {
+          hash = ProtocolSignature.getFingerprint(
+            declaringClass.getMethods());
+          METHOD_HASH_CACHE.put(declaringClass, hash);
+        }
+      }
+      this.clientMethodsHash = hash;
     }
   }
 
