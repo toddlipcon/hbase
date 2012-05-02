@@ -91,7 +91,7 @@ public class Get extends OperationWithAttributes
    * @param row row key
    */
   public Get(byte [] row) {
-    this(row, null);
+    this.row = row;
   }
 
   /**
