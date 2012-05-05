@@ -86,8 +86,8 @@ public class ClientScanner extends AbstractClientScanner {
      */
     public ClientScanner(final Configuration conf, final Scan scan,
       final byte[] tableName, HConnection connection) throws IOException {
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Creating scanner over "
+      if (LOG.isTraceEnabled()) {
+        LOG.trace("Creating scanner over "
             + Bytes.toString(tableName)
             + " starting at key '" + Bytes.toStringBinary(scan.getStartRow()) + "'");
       }
@@ -194,8 +194,8 @@ public class ClientScanner extends AbstractClientScanner {
         localStartKey = this.scan.getStartRow();
       }
 
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Advancing internal scanner to startKey at '" +
+      if (LOG.isTraceEnabled()) {
+        LOG.trace("Advancing internal scanner to startKey at '" +
           Bytes.toStringBinary(localStartKey) + "'");
       }
       try {
