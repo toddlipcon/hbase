@@ -260,6 +260,22 @@
       <url>https://repository.apache.org/content/repositories/releases/</url>
     </repository>
     <repository>
+      <id>cdh.snapshot.repo</id>
+      <url>https://repository.cloudera.com/content/repositories/snapshots</url>
+      <name>Cloudera Snapshot Repository</name>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+    </repository>
+    <repository>
+      <id>cdh.repo</id>
+      <url>https://repository.cloudera.com/content/groups/cloudera-repos</url>
+      <name>Cloudera Repository</name>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
+    <repository>
       <id>apache non-releases</id>
       <name>Apache non-releases</name>
       <url>http://people.apache.org/~stack/m2/repository</url>
@@ -1561,7 +1577,7 @@
         </property>
       </activation>
       <properties>
-        <hadoop.version>1.0.2</hadoop.version>
+        <hadoop.version>0.20.2-cdh3u4-SNAPSHOT</hadoop.version>
       </properties>
       <dependencies>
         <dependency>

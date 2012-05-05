@@ -23,4 +23,7 @@
 -->
 <configuration>
 <property><name>hbase.ipc.warn.response.time</name><value>100000</value></property>
+<property><name>hbase.rootdir</name><value>hdfs://localhost:8020/hbase</value></property>
+<property><name>ipc.server.tcpnodelay</name><value>true</value></property>
+<property><name>hbase.ipc.client.tcpnodelay</name><value>true</value></property>
 </configuration>
