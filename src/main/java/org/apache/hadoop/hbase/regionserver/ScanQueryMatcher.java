@@ -218,10 +218,10 @@ public class ScanQueryMatcher {
     int offset = kv.getOffset();
     int initialOffset = offset;
 
-    int keyLength = Bytes.toInt(bytes, offset, Bytes.SIZEOF_INT);
+    int keyLength = Bytes.toInt(bytes, offset);
     offset += KeyValue.ROW_OFFSET;
 
-    short rowLength = Bytes.toShort(bytes, offset, Bytes.SIZEOF_SHORT);
+    short rowLength = Bytes.toShort(bytes, offset);
     offset += Bytes.SIZEOF_SHORT;
 
     int ret = this.rowComparator.compareRows(row, 0, row.length,

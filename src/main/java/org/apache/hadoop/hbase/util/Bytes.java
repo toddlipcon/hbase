@@ -33,7 +33,7 @@ import java.security.PrivilegedAction;
 import java.util.Comparator;
 import java.util.Iterator;
 
-import org.apache.commons.lang.StringUtils;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.HConstants;
@@ -45,6 +45,9 @@ import org.apache.hadoop.io.WritableUtils;
 import sun.misc.Unsafe;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.primitives.Ints;
+import com.google.common.primitives.Longs;
+import com.google.common.primitives.Shorts;
 
 /**
  * Utility class that handles byte arrays, conversions to/from other types,
@@ -476,7 +479,8 @@ public class Bytes {
    * @return the long value
    */
   public static long toLong(byte[] bytes) {
-    return toLong(bytes, 0, SIZEOF_LONG);
+    return LexicographicalComparerHolder.BEST_COMPARER
+        .toLong(bytes, 0);
   }
 
   /**
@@ -488,7 +492,8 @@ public class Bytes {
    * @return the long value
    */
   public static long toLong(byte[] bytes, int offset) {
-    return toLong(bytes, offset, SIZEOF_LONG);
+    return LexicographicalComparerHolder.BEST_COMPARER
+        .toLong(bytes, offset);
   }
 
   /**
@@ -566,7 +571,7 @@ public class Bytes {
    * @return Float made from passed byte array.
    */
   public static float toFloat(byte [] bytes, int offset) {
-    return Float.intBitsToFloat(toInt(bytes, offset, SIZEOF_INT));
+    return Float.intBitsToFloat(toInt(bytes, offset));
   }
 
   /**
@@ -602,7 +607,7 @@ public class Bytes {
    * @return Return double made from passed bytes.
    */
   public static double toDouble(final byte [] bytes, final int offset) {
-    return Double.longBitsToDouble(toLong(bytes, offset, SIZEOF_LONG));
+    return Double.longBitsToDouble(toLong(bytes, offset));
   }
 
   /**
@@ -648,7 +653,7 @@ public class Bytes {
    * @return the int value
    */
   public static int toInt(byte[] bytes) {
-    return toInt(bytes, 0, SIZEOF_INT);
+    return toInt(bytes, 0);
   }
 
   /**
@@ -658,7 +663,8 @@ public class Bytes {
    * @return the int value
    */
   public static int toInt(byte[] bytes, int offset) {
-    return toInt(bytes, offset, SIZEOF_INT);
+    return LexicographicalComparerHolder.BEST_COMPARER
+        .toInt(bytes, offset);
   }
 
   /**
@@ -723,7 +729,7 @@ public class Bytes {
    * @return the short value
    */
   public static short toShort(byte[] bytes) {
-    return toShort(bytes, 0, SIZEOF_SHORT);
+    return toShort(bytes, 0);
   }
 
   /**
@@ -733,7 +739,8 @@ public class Bytes {
    * @return the short value
    */
   public static short toShort(byte[] bytes, int offset) {
-    return toShort(bytes, offset, SIZEOF_SHORT);
+    return LexicographicalComparerHolder.BEST_COMPARER
+        .toShort(bytes, offset);
   }
 
   /**
@@ -963,6 +970,10 @@ public class Bytes {
   }
 
   interface Comparer<T> {
+    int toInt(byte[] buf, int offset);
+    short toShort(byte[] buf, int offset);
+    long toLong(byte[] buf, int offset);
+    
     abstract public int compareTo(T buffer1, int offset1, int length1,
         T buffer2, int offset2, int length2);
   }
@@ -1027,6 +1038,30 @@ public class Bytes {
         }
         return length1 - length2;
       }
+
+      @Override
+      public int toInt(byte[] buf, int offset) {
+        return Ints.fromBytes(
+            buf[offset], buf[offset+1], buf[offset+2], buf[offset+3]);
+      }
+
+      @Override
+      public short toShort(byte[] buf, int offset) {
+        return Shorts.fromBytes(buf[offset], buf[offset+1]);
+      }
+
+      @Override
+      public long toLong(byte[] buf, int offset) {
+        return Longs.fromBytes(
+            buf[offset],
+            buf[offset+1],
+            buf[offset+2],
+            buf[offset+3],
+            buf[offset+4],
+            buf[offset+5],
+            buf[offset+6],
+            buf[offset+7]);
+      }
     }
 
     @VisibleForTesting
@@ -1068,6 +1103,45 @@ public class Bytes {
       static final boolean littleEndian =
         ByteOrder.nativeOrder().equals(ByteOrder.LITTLE_ENDIAN);
 
+      @Override
+      public long toLong(byte[] buf, int off) {
+        @SuppressWarnings("unused")
+        int triggerBoundsCheck = buf[off + SIZEOF_LONG - 1];
+        long result = theUnsafe.getLong(buf,
+            BYTE_ARRAY_BASE_OFFSET + (long)off);
+        if (!littleEndian) {
+          return result;
+        } else {
+          return Long.reverseBytes(result);
+        }
+      }
+      
+      @Override
+      public int toInt(byte[] buf, int off) {
+        @SuppressWarnings("unused")
+        int triggerBoundsCheck = buf[off + SIZEOF_INT - 1];
+        int result = theUnsafe.getInt(buf,
+            BYTE_ARRAY_BASE_OFFSET + (long)off);
+        if (!littleEndian) {
+          return result;
+        } else {
+          return Integer.reverseBytes(result);
+        }
+      }
+      
+      @Override
+      public short toShort(byte[] buf, int off) {
+        @SuppressWarnings("unused")
+        int triggerBoundsCheck = buf[off + SIZEOF_SHORT - 1];
+        short result = theUnsafe.getShort(buf,
+            BYTE_ARRAY_BASE_OFFSET + (long)off);
+        if (!littleEndian) {
+          return result;
+        } else {
+          return Short.reverseBytes(result);
+        }
+      }
+      
       /**
        * Returns true if x1 is less than x2, when both values are treated as
        * unsigned.
@@ -1096,17 +1170,17 @@ public class Bytes {
             length1 == length2) {
           return 0;
         }
-        int minLength = Math.min(length1, length2);
-        int minWords = minLength / SIZEOF_LONG;
-        int offset1Adj = offset1 + BYTE_ARRAY_BASE_OFFSET;
-        int offset2Adj = offset2 + BYTE_ARRAY_BASE_OFFSET;
+        final int minLength = Math.min(length1, length2);
+        final int minWords = minLength >>> 3; // / SIZEOF_LONG;
+        final int offset1Adj = offset1 + BYTE_ARRAY_BASE_OFFSET;
+        final int offset2Adj = offset2 + BYTE_ARRAY_BASE_OFFSET;
 
         /*
          * Compare 8 bytes at a time. Benchmarking shows comparing 8 bytes at a
          * time is no slower than comparing 4 bytes at a time even on 32-bit.
          * On the other hand, it is substantially faster on 64-bit.
          */
-        for (int i = 0; i < minWords * SIZEOF_LONG; i += SIZEOF_LONG) {
+        for (int i = 0; i < minWords << 3; i += SIZEOF_LONG) {
           long lw = theUnsafe.getLong(buffer1, offset1Adj + (long) i);
           long rw = theUnsafe.getLong(buffer2, offset2Adj + (long) i);
           long diff = lw ^ rw;
@@ -1114,34 +1188,15 @@ public class Bytes {
           if (diff != 0) {
             if (!littleEndian) {
               return lessThanUnsigned(lw, rw) ? -1 : 1;
-            }
-
-            // Use binary search
-            int n = 0;
-            int y;
-            int x = (int) diff;
-            if (x == 0) {
-              x = (int) (diff >>> 32);
-              n = 32;
-            }
-
-            y = x << 16;
-            if (y == 0) {
-              n += 16;
             } else {
-              x = y;
+              return lessThanUnsigned(Long.reverseBytes(lw),
+                  Long.reverseBytes(rw)) ? -1 : 1;
             }
-
-            y = x << 8;
-            if (y == 0) {
-              n += 8;
-            }
-            return (int) (((lw >>> n) & 0xFFL) - ((rw >>> n) & 0xFFL));
           }
         }
 
         // The epilogue to cover the last (minLength % 8) elements.
-        for (int i = minWords * SIZEOF_LONG; i < minLength; i++) {
+        for (int i = minWords << 3 ; i < minLength; i++) {
           int a = (buffer1[offset1 + i] & 0xff);
           int b = (buffer2[offset2 + i] & 0xff);
           if (a != b) {

@@ -4745,7 +4745,7 @@ public class HRegion implements HeapSize { // , Writable{
           if(kv.getValueLength() == 8){
             byte [] buffer = kv.getBuffer();
             int valueOffset = kv.getValueOffset();
-            result += Bytes.toLong(buffer, valueOffset, Bytes.SIZEOF_LONG);
+            result += Bytes.toLong(buffer, valueOffset);
           }
           else{
             wrongLength = true;
