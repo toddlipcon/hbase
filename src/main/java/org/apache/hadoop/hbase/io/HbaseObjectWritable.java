@@ -98,6 +98,7 @@ import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.io.WritableFactories;
 import org.apache.hadoop.io.WritableUtils;
 
+import com.google.protobuf.CodedOutputStream;
 import com.google.protobuf.Message;
 import com.google.protobuf.RpcController;
 
@@ -409,7 +410,8 @@ public class HbaseObjectWritable implements Writable, WritableWithSize, Configur
                                      Configuration conf) {
     long size = Bytes.SIZEOF_BYTE; // code
     if (instance == null) {
-      return 0L;
+      // this ends up as 3 bytes on the wire, currently.
+      return 3L;
     }
 
     if (declaredClass.isArray()) {
@@ -422,6 +424,12 @@ public class HbaseObjectWritable implements Writable, WritableWithSize, Configur
       Result r = (Result) instance;
       // one extra class code for writable instance.
       return r.getWritableSize() + size + Bytes.SIZEOF_BYTE;
+    }
+    if (instance instanceof Message) {
+      int pbSize = ((Message)instance).getSerializedSize();
+      return CodedOutputStream.computeRawVarint32Size(pbSize) +
+        pbSize +
+        4 + instance.getClass().getName().length();
     }
     return 0L; // no hint is the default.
   }

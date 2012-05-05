@@ -46,7 +46,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HConstants;
-import org.apache.hadoop.hbase.protobuf.generated.RPCProtos;
 import org.apache.hadoop.hbase.protobuf.generated.RPCProtos.ConnectionHeader;
 import org.apache.hadoop.hbase.protobuf.generated.RPCProtos.RpcRequest;
 import org.apache.hadoop.hbase.protobuf.generated.RPCProtos.RpcResponse;
@@ -54,14 +53,16 @@ import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.util.PoolMap;
 import org.apache.hadoop.hbase.util.PoolMap.PoolType;
 import org.apache.hadoop.io.DataOutputBuffer;
-import org.apache.hadoop.hbase.io.DataOutputOutputStream;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.ipc.RemoteException;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.util.ReflectionUtils;
 
+import com.google.common.base.Preconditions;
 import com.google.protobuf.ByteString;
+import com.google.protobuf.CodedOutputStream;
+import com.google.protobuf.WireFormat;
 
 /** A client for an IPC service.  IPC calls take a single {@link Writable} as a
  * parameter, and return a {@link Writable} as their value.  A service runs on
@@ -528,21 +529,41 @@ public class HBaseClient {
       try {
         if (LOG.isDebugEnabled())
           LOG.debug(getName() + " sending #" + call.id);
-        RpcRequest.Builder builder = RPCProtos.RpcRequest.newBuilder();
-        builder.setCallId(call.id);
+        
         Invocation invocation = (Invocation)call.param;
-        DataOutputBuffer d = new DataOutputBuffer();
+        long sizeHint = invocation.getWritableSize();
+        Preconditions.checkArgument(sizeHint < Integer.MAX_VALUE);
+
+        DataOutputBuffer d = new DataOutputBuffer((int)sizeHint);
         invocation.write(d);
-        builder.setRequest(ByteString.copyFrom(d.getData()));
+        int invocationSize = d.getLength();
+        
+        if (invocationSize > sizeHint && LOG.isDebugEnabled()) {
+          LOG.debug("size hint was too small for call " + invocation + 
+              " (hint=" + sizeHint + " actual=" + invocationSize);
+        }
+
+        int headerSize =
+          CodedOutputStream.computeInt32Size(RpcRequest.CALLID_FIELD_NUMBER, call.id) +
+          CodedOutputStream.computeTagSize(RpcRequest.REQUEST_FIELD_NUMBER) +
+          CodedOutputStream.computeRawVarint32Size(invocationSize);
+        
+        byte[] header = new byte[headerSize];
+        CodedOutputStream cos = CodedOutputStream.newInstance(header);
+        cos.writeInt32(RpcRequest.CALLID_FIELD_NUMBER, call.id);
+        cos.writeTag(RpcRequest.REQUEST_FIELD_NUMBER, WireFormat.WIRETYPE_LENGTH_DELIMITED);
+        cos.writeRawVarint32(invocationSize);
+        cos.checkNoSpaceLeft();
+        
         //noinspection SynchronizeOnNonFinalField
         synchronized (this.out) { // FindBugs IS2_INCONSISTENT_SYNC
-          RpcRequest obj = builder.build();
-          this.out.writeInt(obj.getSerializedSize());
-          obj.writeTo(DataOutputOutputStream.constructOutputStream(this.out));
+          this.out.writeInt(headerSize + invocationSize);
+          this.out.write(header);
+          d.writeTo(this.out);
           this.out.flush();
         }
       } catch(IOException e) {
-        markClosed(e);
+        markClosed(e);          
       }
     }
 

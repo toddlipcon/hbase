@@ -34,13 +34,15 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.client.AdminProtocol;
 import org.apache.hadoop.hbase.client.ClientProtocol;
 import org.apache.hadoop.hbase.io.HbaseObjectWritable;
+import org.apache.hadoop.hbase.io.WritableWithSize;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.AdminService;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ClientService;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.io.VersionMismatchException;
 import org.apache.hadoop.io.VersionedWritable;
 
 /** A method invocation, including the method name and its parameters.*/
-public class Invocation extends VersionedWritable implements Configurable {
+public class Invocation extends VersionedWritable implements Configurable, WritableWithSize {
   protected String methodName;
   @SuppressWarnings("rawtypes")
   protected Class[] parameterClasses;
@@ -183,6 +185,21 @@ public class Invocation extends VersionedWritable implements Configurable {
       HbaseObjectWritable.writeObject(out, parameters[i], parameterClasses[i],
                                  conf);
     }
+  }
+
+  @Override
+  public long getWritableSize() {
+    int size =
+      1 + // VersionedWritable version
+      2 + this.methodName.length() +
+      Bytes.SIZEOF_LONG + // client version
+      Bytes.SIZEOF_INT + // client methods hash
+      Bytes.SIZEOF_INT; // parameter list length
+    for (int i = 0; i < parameterClasses.length; i++) {
+      size += HbaseObjectWritable.getWritableSize(
+          parameters[i], parameterClasses[i], conf);
+    }
+    return size;
   }
 
   @Override

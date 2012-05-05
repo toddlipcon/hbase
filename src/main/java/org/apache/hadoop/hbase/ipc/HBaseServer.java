@@ -35,6 +35,7 @@ import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.channels.CancelledKeyException;
 import java.nio.channels.ClosedChannelException;
+import java.nio.channels.GatheringByteChannel;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
@@ -58,7 +59,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.io.DataOutputOutputStream;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.io.HbaseObjectWritable;
 import org.apache.hadoop.hbase.io.WritableWithSize;
@@ -69,8 +69,6 @@ import org.apache.hadoop.hbase.protobuf.generated.RPCProtos.RpcException;
 import org.apache.hadoop.hbase.monitoring.MonitoredRPCHandler;
 import org.apache.hadoop.hbase.monitoring.TaskMonitor;
 import org.apache.hadoop.hbase.security.User;
-import org.apache.hadoop.hbase.util.ByteBufferOutputStream;
-import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.io.DataOutputBuffer;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.ipc.RPC.VersionMismatch;
@@ -80,6 +78,8 @@ import org.apache.hadoop.util.StringUtils;
 import com.google.common.base.Function;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.protobuf.ByteString;
+import com.google.protobuf.CodedOutputStream;
+import com.google.protobuf.WireFormat;
 
 import org.cliffc.high_scale_lib.Counter;
 
@@ -270,7 +270,7 @@ public abstract class HBaseServer implements RpcServer {
     protected Connection connection;              // connection to client
     protected long timestamp;      // the time received when response is null
                                    // the time served when response is not null
-    protected ByteBuffer response;                // the response for this call
+    protected BufferChain response;                // the response for this call
     protected boolean delayResponse;
     protected Responder responder;
     protected boolean delayReturnValue;           // if the return value should be
@@ -305,7 +305,91 @@ public abstract class HBaseServer implements RpcServer {
         return;
       if (errorClass != null) {
         this.isError = true;
+        this.response = makeResponseForError(errorClass, error);
+      } else {
+        try {
+          this.response = makeResponseForSuccess(value);
+        } catch (IOException ioe) {
+          errorClass = ioe.getClass().getName();
+          error = StringUtils.stringifyException(ioe);
+          this.isError = true;
+          this.response = makeResponseForError(errorClass, error);
+        }
       }
+    }
+    
+    private BufferChain makeResponseForError(String errorClass, String error) {
+      RpcResponse response = RpcResponse.newBuilder()
+          .setCallId(this.id)
+          .setError(true)
+          .setException(RpcException.newBuilder()
+              .setExceptionName(errorClass)
+              .setStackTrace(error))
+          .build();
+
+      ByteBuffer buf = response.toByteString().asReadOnlyByteBuffer();
+      int len = buf.remaining();
+      byte[] delimiter = new byte[CodedOutputStream.computeRawVarint32Size(len)];
+      try {
+        CodedOutputStream.newInstance(delimiter).writeRawVarint32(len);
+      } catch (IOException ioe) {
+        throw new RuntimeException("Should not fail to write to memory", ioe);
+      }
+      return new BufferChain(ByteBuffer.wrap(delimiter), buf);
+    }
+    
+    private BufferChain makeResponseForSuccess(Object value) throws IOException {
+      // Success responses are much more common than error responses, so
+      // we do a bit of manual protobuf serialization to avoid buffer copies.
+      // Because protobufs use vint length prefixes, this is slightly tricky.
+      // The end result looks like:
+      //
+      //  < length prefix > - vint32 for the whole message ("delimiter" in PB terms)
+      //  < RpcResponse.callid tag> <call id>
+      //  < RpcResponse.error tag>  <error boolean>
+      //  < RpcResponse.response tag>
+      //  < RpcResponse.response length (vint32)
+      //  < Serialized response object (HBaseObjectWritable)
+      // 
+      // Because we don't always know the length of the response object until we serialize
+      // it, we can't fill in the length prefix ahead of time. So, we split the above
+      // into two buffers, and return a BufferChain so that they're written together
+      // to the wire using writev()
+      
+      // Serialize the actual result
+      ByteBuffer valueBuf = resultToByteBuffer(value);
+      int valueLen = valueBuf.remaining();
+      
+      int headerLen =
+        CodedOutputStream.computeInt32Size(RpcResponse.CALLID_FIELD_NUMBER, this.id) +
+        CodedOutputStream.computeBoolSize(RpcResponse.ERROR_FIELD_NUMBER, false) +
+        CodedOutputStream.computeTagSize(RpcResponse.RESPONSE_FIELD_NUMBER) +
+        CodedOutputStream.computeRawVarint32Size(valueLen);
+      int totalLen = headerLen + valueLen;
+      int delimiterLen = CodedOutputStream.computeRawVarint32Size(totalLen);
+      
+      byte[] header = new byte[delimiterLen + headerLen];
+      CodedOutputStream cos = CodedOutputStream.newInstance(header);
+      
+      // Write delimiter for whole message
+      cos.writeRawVarint32(totalLen);
+      
+      // Set call ID and error flag
+      cos.writeInt32(RpcResponse.CALLID_FIELD_NUMBER, this.id);
+      cos.writeBool(RpcResponse.ERROR_FIELD_NUMBER, false);
+
+      // Write header for the actual response data
+      cos.writeTag(RpcResponse.RESPONSE_FIELD_NUMBER, WireFormat.WIRETYPE_LENGTH_DELIMITED);
+      cos.writeRawVarint32(valueLen);
+      cos.flush();
+      cos.checkNoSpaceLeft();
+
+      return new BufferChain(
+          ByteBuffer.wrap(header),
+          valueBuf);
+    }
+
+    private ByteBuffer resultToByteBuffer(Object value) throws IOException {
       Writable result = null;
       if (value instanceof Writable) {
         result = (Writable) value;
@@ -316,50 +400,42 @@ public abstract class HBaseServer implements RpcServer {
           result = new HbaseObjectWritable(value);
         }
       }
-
+      
+      boolean hinted = false;
       int size = BUFFER_INITIAL_SIZE;
       if (result instanceof WritableWithSize) {
         // get the size hint.
         WritableWithSize ohint = (WritableWithSize) result;
-        long hint = ohint.getWritableSize() + Bytes.SIZEOF_BYTE +
-          (2 * Bytes.SIZEOF_INT);
+        long hint = ohint.getWritableSize();
         if (hint > Integer.MAX_VALUE) {
-          // oops, new problem.
-          IOException ioe =
-            new IOException("Result buffer size too large: " + hint);
-          errorClass = ioe.getClass().getName();
-          error = StringUtils.stringifyException(ioe);
-        } else {
+          throw new IOException("Result buffer size too large: " + hint);
+        } else if (hint > 0) {
           size = (int)hint;
+          hinted = true;
         }
       }
-
-      ByteBufferOutputStream buf = new ByteBufferOutputStream(size);
-      DataOutputStream out = new DataOutputStream(buf);
-      try {
-        RpcResponse.Builder builder = RpcResponse.newBuilder();
-        // Call id.
-        builder.setCallId(this.id);
-        builder.setError(error != null);
-        if (error != null) {
-          RpcException.Builder b = RpcException.newBuilder();
-          b.setExceptionName(errorClass);
-          b.setStackTrace(error);
-          builder.setException(b.build());
-        } else {
-          DataOutputBuffer d = new DataOutputBuffer(size);
-          result.write(d);
-          byte[] response = d.getData();
-          builder.setResponse(ByteString.copyFrom(response));
+      
+      DataOutputBuffer buf = new DataOutputBuffer(size);
+      result.write(buf);
+      
+      // Debug logs if the hint was too small (in which case we paid an
+      // extra copy to expand the buffer) or too big (in which case we
+      // wasted allocation space)
+      if (hinted && LOG.isDebugEnabled()) {
+        if (buf.getLength() > size) {
+          LOG.debug("Hint for value " + value + " too small: " +
+              "hint=" + size + " actual=" + buf.getLength());
+          if (buf.getLength() < 10) {
+            LOG.debug("serialized data:" + StringUtils.byteToHexString(
+                buf.getData(), 0, buf.getLength()));
+          }
+        } else if (buf.getLength() < size - 8) {
+          LOG.debug("Hint for value " + value + " was much too big: " +
+              "hint=" + size + " actual=" + buf.getLength());
         }
-        builder.build().writeDelimitedTo(
-            DataOutputOutputStream.constructOutputStream(out));
-      } catch (IOException e) {
-        LOG.warn("Exception while creating response " + e);
       }
-      ByteBuffer bb = buf.getByteBuffer();
-      bb.position(0);
-      this.response = bb;
+      
+      return ByteBuffer.wrap(buf.getData(), 0, buf.getLength());
     }
 
     @Override
@@ -933,7 +1009,7 @@ public abstract class HBaseServer implements RpcServer {
           //
           // Send as much data as we can in the non-blocking fashion
           //
-          int numBytes = channelWrite(channel, call.response);
+          long numBytes = channelWrite(channel, call.response);
           if (numBytes < 0) {
             return true;
           }
@@ -1686,11 +1762,10 @@ public abstract class HBaseServer implements RpcServer {
    * @throws java.io.IOException e
    * @see java.nio.channels.WritableByteChannel#write(java.nio.ByteBuffer)
    */
-  protected int channelWrite(WritableByteChannel channel,
-                                    ByteBuffer buffer) throws IOException {
+  protected long channelWrite(GatheringByteChannel channel,
+      BufferChain buffer) throws IOException {
 
-    int count =  (buffer.remaining() <= NIO_BUFFER_LIMIT) ?
-           channel.write(buffer) : channelIO(null, channel, buffer);
+    long count = buffer.writeChunk(channel, NIO_BUFFER_LIMIT);
     if (count > 0) {
       rpcMetrics.sentBytes.inc(count);
     }
