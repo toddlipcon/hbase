@@ -19,8 +19,6 @@
  */
 package org.apache.hadoop.hbase.filter;
 
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.hbase.KeyValue;
 
 import java.io.DataOutput;
@@ -36,8 +34,6 @@ import com.google.common.base.Preconditions;
  * <p>
  * This filter can be used to more efficiently perform row count operations.
  */
-@InterfaceAudience.Public
-@InterfaceStability.Stable
 public class FirstKeyOnlyFilter extends FilterBase {
   private boolean foundKV = false;
 

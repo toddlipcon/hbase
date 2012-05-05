@@ -19,9 +19,7 @@
  */
 package org.apache.hadoop.hbase.regionserver;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 
-@InterfaceAudience.Private
 public enum RegionOpeningState {
 
   OPENED,

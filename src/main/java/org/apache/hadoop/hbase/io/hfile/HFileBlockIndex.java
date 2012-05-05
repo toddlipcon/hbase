@@ -34,7 +34,6 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.hbase.KeyValue;
@@ -58,7 +57,6 @@ import org.apache.hadoop.util.StringUtils;
  * to use the reader can be found in {@link HFileReaderV2} and
  * TestHFileBlockIndex.
  */
-@InterfaceAudience.Private
 public class HFileBlockIndex {
 
   private static final Log LOG = LogFactory.getLog(HFileBlockIndex.class);

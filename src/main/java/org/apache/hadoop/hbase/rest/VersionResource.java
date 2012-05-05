@@ -35,7 +35,6 @@ import javax.ws.rs.core.Response.ResponseBuilder;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.rest.model.VersionModel;
 
 /**
@@ -45,7 +44,6 @@ import org.apache.hadoop.hbase.rest.model.VersionModel;
  * <p>
  * <tt>/version</tt> (alias for <tt>/version/rest</tt>)
  */
-@InterfaceAudience.Private
 public class VersionResource extends ResourceBase {
 
   private static final Log LOG = LogFactory.getLog(VersionResource.class);

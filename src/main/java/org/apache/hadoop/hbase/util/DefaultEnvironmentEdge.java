@@ -19,14 +19,10 @@
  */
 package org.apache.hadoop.hbase.util;
 
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 
 /**
  * Default implementation of an environment edge.
  */
-@InterfaceAudience.Public
-@InterfaceStability.Evolving
 public class DefaultEnvironmentEdge implements EnvironmentEdge {
 
 

@@ -20,7 +20,6 @@ package org.apache.hadoop.hbase.io.hfile;
 import java.io.IOException;
 import java.io.InputStream;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.fs.FSDataInputStream;
 
 /**
@@ -30,7 +29,6 @@ import org.apache.hadoop.fs.FSDataInputStream;
  * would not interfere with each other.
  * Copied from hadoop-335 tfile.
  */
-@InterfaceAudience.Private
 class BoundedRangeFileInputStream  extends InputStream {
 
   private FSDataInputStream in;

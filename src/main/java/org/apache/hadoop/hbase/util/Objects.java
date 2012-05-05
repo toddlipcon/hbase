@@ -26,7 +26,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Action;
 import org.apache.hadoop.hbase.client.Delete;
@@ -38,7 +37,6 @@ import org.apache.hadoop.hbase.client.Put;
 /**
  * Utility methods for interacting with object instances.
  */
-@InterfaceAudience.Private
 public class Objects {
   private static class QuantityMap extends HashMap<String,Quantity> {
     public void increment(String type, int count) {

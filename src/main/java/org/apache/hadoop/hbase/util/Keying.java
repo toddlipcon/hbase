@@ -23,8 +23,6 @@ import java.util.StringTokenizer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 
 /**
  * Utility creating hbase friendly keys.
@@ -33,8 +31,6 @@ import org.apache.hadoop.classification.InterfaceStability;
  * http or https.
  * @see Bytes#split(byte[], byte[], int)
  */
-@InterfaceAudience.Public
-@InterfaceStability.Stable
 public class Keying {
   private static final String SCHEME = "r:";
   private static final Pattern URI_RE_PARSER =

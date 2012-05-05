@@ -21,8 +21,6 @@ package org.apache.hadoop.hbase.client;
 
 import java.io.IOException;
 
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 
 
@@ -31,8 +29,6 @@ import org.apache.hadoop.conf.Configuration;
  *
  * @since 0.21.0
  */
-@InterfaceAudience.Public
-@InterfaceStability.Stable
 public interface HTableInterfaceFactory {
 
   /**

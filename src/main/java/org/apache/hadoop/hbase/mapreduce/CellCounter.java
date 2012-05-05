@@ -23,8 +23,6 @@ import java.io.IOException;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -66,8 +64,6 @@ import com.google.common.base.Preconditions;
  * second a regex based or prefix based row filter to restrict the
  * count operation to a limited subset of rows from the table.
  */
-@InterfaceAudience.Public
-@InterfaceStability.Stable
 public class CellCounter {
   private static final Log LOG =
     LogFactory.getLog(CellCounter.class.getName());

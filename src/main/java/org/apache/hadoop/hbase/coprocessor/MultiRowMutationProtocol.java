@@ -20,8 +20,6 @@ package org.apache.hadoop.hbase.coprocessor;
 import java.io.IOException;
 import java.util.List;
 
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.ipc.CoprocessorProtocol;
 import org.apache.hadoop.hbase.regionserver.HRegion;
@@ -47,8 +45,6 @@ import org.apache.hadoop.hbase.regionserver.HRegion;
  * mrOp.mutateRows(mutations);
  * </pre></code>
  */
-@InterfaceAudience.Public
-@InterfaceStability.Evolving
 public interface MultiRowMutationProtocol extends CoprocessorProtocol {
   public void mutateRows(List<Mutation> mutations) throws IOException;
 }

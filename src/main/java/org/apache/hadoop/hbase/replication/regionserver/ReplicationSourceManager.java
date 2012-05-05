@@ -37,7 +37,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -60,7 +59,6 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
  * tries to grab a lock in order to transfer all the queues in a local
  * old source.
  */
-@InterfaceAudience.Private
 public class ReplicationSourceManager {
   private static final Log LOG =
       LogFactory.getLog(ReplicationSourceManager.class);

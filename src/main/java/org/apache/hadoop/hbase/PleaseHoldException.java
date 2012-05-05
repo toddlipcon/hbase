@@ -20,8 +20,6 @@
 package org.apache.hadoop.hbase;
 
 import java.io.IOException;
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 
 /**
  * This exception is thrown by the master when a region server was shut down and
@@ -30,8 +28,6 @@ import org.apache.hadoop.classification.InterfaceStability;
  * operations
  */
 @SuppressWarnings("serial")
-@InterfaceAudience.Public
-@InterfaceStability.Stable
 public class PleaseHoldException extends IOException {
   public PleaseHoldException(String message) {
     super(message);

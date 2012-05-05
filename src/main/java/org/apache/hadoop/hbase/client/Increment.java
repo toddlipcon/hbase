@@ -27,8 +27,6 @@ import java.util.NavigableMap;
 import java.util.Set;
 import java.util.TreeMap;
 
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.hbase.io.TimeRange;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.io.Writable;
@@ -45,8 +43,6 @@ import org.apache.hadoop.io.Writable;
  * to increment.  At least one column to increment must be specified using the
  * {@link #addColumn(byte[], byte[], long)} method.
  */
-@InterfaceAudience.Public
-@InterfaceStability.Stable
 public class Increment implements Row {
   private static final byte INCREMENT_VERSION = (byte)2;
 

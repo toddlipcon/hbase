@@ -19,8 +19,6 @@
  */
 package org.apache.hadoop.hbase.mapreduce;
 
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.mapreduce.Mapper;
@@ -33,8 +31,6 @@ import org.apache.hadoop.mapreduce.Mapper;
  * @param <VALUEOUT>  The type of the value.
  * @see org.apache.hadoop.mapreduce.Mapper
  */
-@InterfaceAudience.Public
-@InterfaceStability.Stable
 public abstract class TableMapper<KEYOUT, VALUEOUT>
 extends Mapper<ImmutableBytesWritable, Result, KEYOUT, VALUEOUT> {
 

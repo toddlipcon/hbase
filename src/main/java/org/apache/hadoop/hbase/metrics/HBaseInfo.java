@@ -19,7 +19,6 @@
  */
 package org.apache.hadoop.hbase.metrics;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.metrics.MetricsMBeanBase;
 import org.apache.hadoop.metrics.MetricsContext;
 import org.apache.hadoop.metrics.MetricsRecord;
@@ -32,7 +31,6 @@ import javax.management.ObjectName;
 /**
  * Exports HBase system information as an MBean for JMX observation.
  */
-@InterfaceAudience.Private
 public class HBaseInfo {
   protected static class HBaseInfoMBean extends MetricsMBeanBase {
     private final ObjectName mbeanName;

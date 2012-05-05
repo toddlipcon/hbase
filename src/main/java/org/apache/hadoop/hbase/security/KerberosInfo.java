@@ -23,7 +23,6 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 
 /**
  * Indicates Kerberos related information to be used for authorizing connections
@@ -31,7 +30,6 @@ import org.apache.hadoop.classification.InterfaceAudience;
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
-@InterfaceAudience.Private
 public @interface KerberosInfo {
   /** Key for getting server's Kerberos principal name from Configuration */
   String serverPrincipal();

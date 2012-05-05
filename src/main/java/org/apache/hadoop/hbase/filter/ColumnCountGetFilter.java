@@ -20,8 +20,6 @@
 
 package org.apache.hadoop.hbase.filter;
 
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.hbase.KeyValue;
 
 import java.io.DataInput;
@@ -37,8 +35,6 @@ import com.google.common.base.Preconditions;
  * its quota of columns, {@link #filterAllRemaining()} returns true.  This
  * makes this filter unsuitable as a Scan filter.
  */
-@InterfaceAudience.Public
-@InterfaceStability.Stable
 public class ColumnCountGetFilter extends FilterBase {
   private int limit = 0;
   private int count = 0;

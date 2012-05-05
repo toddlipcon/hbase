@@ -21,7 +21,6 @@ package org.apache.hadoop.hbase;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.util.HasThread;
 import org.apache.hadoop.hbase.util.Sleeper;
 
@@ -35,7 +34,6 @@ import org.apache.hadoop.hbase.util.Sleeper;
  * <p>Don't subclass Chore if the task relies on being woken up for something to
  * do, such as an entry being added to a queue, etc.
  */
-@InterfaceAudience.Private
 public abstract class Chore extends HasThread {
   private final Log LOG = LogFactory.getLog(this.getClass());
   private final Sleeper sleeper;

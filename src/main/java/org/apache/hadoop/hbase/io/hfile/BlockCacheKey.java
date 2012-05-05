@@ -17,7 +17,6 @@
  */
 package org.apache.hadoop.hbase.io.hfile;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.io.HeapSize;
 import org.apache.hadoop.hbase.io.encoding.DataBlockEncoding;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -26,7 +25,6 @@ import org.apache.hadoop.hbase.util.ClassSize;
 /**
  * Cache Key for use with implementations of {@link BlockCache}
  */
-@InterfaceAudience.Private
 public class BlockCacheKey implements HeapSize {
   private final String hfileName;
   private final long offset;

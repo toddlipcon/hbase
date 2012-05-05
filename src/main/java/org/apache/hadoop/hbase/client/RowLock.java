@@ -19,14 +19,10 @@
  */
 package org.apache.hadoop.hbase.client;
 
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 
 /**
  * Holds row name and lock id.
  */
-@InterfaceAudience.Public
-@InterfaceStability.Stable
 public class RowLock {
   private byte [] row = null;
   private long lockId = -1L;

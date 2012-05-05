@@ -17,7 +17,6 @@
  */
 package org.apache.hadoop.hbase.zookeeper;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.Abortable;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
@@ -36,7 +35,6 @@ import com.google.protobuf.InvalidProtocolBufferException;
  * out of <code>RegionServerServices</code>.
  * This class has a watcher on the root location and notices changes.
  */
-@InterfaceAudience.Private
 public class RootRegionTracker extends ZooKeeperNodeTracker {
   /**
    * Creates a root region location tracker.

@@ -23,14 +23,12 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.util.Bytes;
 
 /**
  * RegionServerAccounting keeps record of some basic real time information about
  * the Region Server. Currently, it only keeps record the global memstore size. 
  */
-@InterfaceAudience.Private
 public class RegionServerAccounting {
 
   private final AtomicLong atomicGlobalMemstoreSize = new AtomicLong(0);

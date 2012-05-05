@@ -23,8 +23,6 @@ import java.io.IOException;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -47,8 +45,6 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
  *
  * @param <KEY>  The type of the key. Ignored in this class.
  */
-@InterfaceAudience.Public
-@InterfaceStability.Stable
 public class TableOutputFormat<KEY> extends OutputFormat<KEY, Writable>
 implements Configurable {
 

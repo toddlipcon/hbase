@@ -29,7 +29,6 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -57,7 +56,6 @@ import org.apache.hadoop.hbase.util.FSUtils;
  * the underlying file system, including splitting log files, checking file
  * system status, etc.
  */
-@InterfaceAudience.Private
 public class MasterFileSystem {
   private static final Log LOG = LogFactory.getLog(MasterFileSystem.class.getName());
   // HBase configuration

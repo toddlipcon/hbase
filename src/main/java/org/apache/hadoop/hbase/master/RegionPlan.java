@@ -17,7 +17,6 @@
  */
 package org.apache.hadoop.hbase.master;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.ServerName;
 
@@ -31,7 +30,6 @@ import org.apache.hadoop.hbase.ServerName;
  * The comparable implementation of this class compares only the region
  * information and not the source/dest server info.
  */
-@InterfaceAudience.Private
 public class RegionPlan implements Comparable<RegionPlan> {
   private final HRegionInfo hri;
   private final ServerName source;

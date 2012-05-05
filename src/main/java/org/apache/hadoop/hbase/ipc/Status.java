@@ -17,12 +17,10 @@
  */
 package org.apache.hadoop.hbase.ipc;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 
 /**
  * Status of a Hadoop IPC call.
  */
-@InterfaceAudience.Private
 enum Status {
   SUCCESS (0),
   ERROR (1),

@@ -24,7 +24,6 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.Server;
 
 
@@ -54,7 +53,6 @@ import org.apache.hadoop.hbase.Server;
  * {@link #setListener(EventHandlerListener)}.
  * @see ExecutorService
  */
-@InterfaceAudience.Private
 public abstract class EventHandler implements Runnable, Comparable<Runnable> {
   private static final Log LOG = LogFactory.getLog(EventHandler.class);
 

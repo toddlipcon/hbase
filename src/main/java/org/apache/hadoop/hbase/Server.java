@@ -19,7 +19,6 @@
  */
 package org.apache.hadoop.hbase;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.catalog.CatalogTracker;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
@@ -28,7 +27,6 @@ import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
  * Defines the set of shared functions implemented by HBase servers (Masters
  * and RegionServers).
  */
-@InterfaceAudience.Private
 public interface Server extends Abortable, Stoppable {
   /**
    * Gets the configuration object for this server.

@@ -21,8 +21,6 @@ package org.apache.hadoop.hbase.mapreduce;
 
 import java.io.IOException;
 
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.mapreduce.JobContext;
 import org.apache.hadoop.mapreduce.OutputCommitter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
@@ -30,8 +28,6 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 /**
  * Small committer class that does not do anything.
  */
-@InterfaceAudience.Public
-@InterfaceStability.Stable
 public class TableOutputCommitter extends OutputCommitter {
 
   @Override

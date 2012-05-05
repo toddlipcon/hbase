@@ -33,7 +33,6 @@ import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.ext.MessageBodyWriter;
 import javax.ws.rs.ext.Provider;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.rest.Constants;
 import org.apache.hadoop.hbase.rest.ProtobufMessageHandler;
 
@@ -45,7 +44,6 @@ import org.apache.hadoop.hbase.rest.ProtobufMessageHandler;
  */
 @Provider
 @Produces(Constants.MIMETYPE_PROTOBUF)
-@InterfaceAudience.Private
 public class ProtobufMessageBodyProducer
   implements MessageBodyWriter<ProtobufMessageHandler> {
 

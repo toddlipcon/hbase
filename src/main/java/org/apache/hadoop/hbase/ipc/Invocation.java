@@ -29,7 +29,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.client.AdminProtocol;
@@ -41,7 +40,6 @@ import org.apache.hadoop.io.VersionMismatchException;
 import org.apache.hadoop.io.VersionedWritable;
 
 /** A method invocation, including the method name and its parameters.*/
-@InterfaceAudience.Private
 public class Invocation extends VersionedWritable implements Configurable {
   protected String methodName;
   @SuppressWarnings("rawtypes")

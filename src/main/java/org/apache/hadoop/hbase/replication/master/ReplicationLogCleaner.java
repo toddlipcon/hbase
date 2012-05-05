@@ -21,7 +21,6 @@ package org.apache.hadoop.hbase.replication.master;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.Abortable;
@@ -41,7 +40,6 @@ import java.util.Set;
  * Implementation of a log cleaner that checks if a log is still scheduled for
  * replication before deleting it when its TTL is over.
  */
-@InterfaceAudience.Private
 public class ReplicationLogCleaner implements LogCleanerDelegate, Abortable {
   private static final Log LOG = LogFactory.getLog(ReplicationLogCleaner.class);
   private Configuration conf;

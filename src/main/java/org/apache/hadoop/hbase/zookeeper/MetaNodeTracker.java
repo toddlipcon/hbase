@@ -19,7 +19,6 @@
  */
 package org.apache.hadoop.hbase.zookeeper;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.Abortable;
 import org.apache.hadoop.hbase.HRegionInfo;
 
@@ -30,7 +29,6 @@ import org.apache.hadoop.hbase.HRegionInfo;
  * receive any notification for that assignment.  You will receive a
  * notification after META has been successfully assigned to a new location.
  */
-@InterfaceAudience.Private
 public class MetaNodeTracker extends ZooKeeperNodeTracker {
   /**
    * Creates a meta node tracker.

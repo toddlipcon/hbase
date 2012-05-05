@@ -21,7 +21,6 @@ package org.apache.hadoop.hbase.master;
 
 import java.io.IOException;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.Server;
 import org.apache.hadoop.hbase.TableDescriptors;
@@ -32,7 +31,6 @@ import org.apache.hadoop.hbase.zookeeper.RegionServerTracker;
 /**
  * Services Master supplies
  */
-@InterfaceAudience.Private
 public interface MasterServices extends Server {
   /**
    * @return Master's instance of the {@link AssignmentManager}

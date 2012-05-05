@@ -27,7 +27,6 @@ import java.util.TreeMap;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
@@ -44,7 +43,6 @@ import org.apache.hadoop.hbase.util.Writables;
 /**
  * Reads region and assignment information from <code>.META.</code>.
  */
-@InterfaceAudience.Private
 public class MetaReader {
   // TODO: Strip CatalogTracker from this class.  Its all over and in the end
   // its only used to get its Configuration so we can get associated

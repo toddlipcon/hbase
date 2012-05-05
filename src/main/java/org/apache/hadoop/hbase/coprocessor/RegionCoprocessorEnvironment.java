@@ -20,14 +20,10 @@
 
 package org.apache.hadoop.hbase.coprocessor;
 
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.hbase.CoprocessorEnvironment;
 import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.RegionServerServices;
 
-@InterfaceAudience.Public
-@InterfaceStability.Evolving
 public interface RegionCoprocessorEnvironment extends CoprocessorEnvironment {
   /** @return the region associated with this coprocessor */
   public HRegion getRegion();

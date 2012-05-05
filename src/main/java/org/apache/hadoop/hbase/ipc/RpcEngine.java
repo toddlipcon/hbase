@@ -25,13 +25,11 @@ import javax.net.SocketFactory;
 
 import org.apache.hadoop.hbase.ipc.VersionedProtocol;
 import org.apache.hadoop.hbase.security.User;
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 
 import com.google.protobuf.ServiceException;
 
 /** An RPC implementation. */
-@InterfaceAudience.Private
 interface RpcEngine {
 
   /** Construct a client-side proxy object. */

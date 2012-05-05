@@ -23,7 +23,6 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Writable;
 
@@ -35,7 +34,6 @@ import org.apache.hadoop.io.Writable;
  * the owning Table is included in the summarization.
  *
  */
-@InterfaceAudience.Private
 public class BlockCacheColumnFamilySummary implements Writable, Comparable<BlockCacheColumnFamilySummary> {
 
   private String table = "";

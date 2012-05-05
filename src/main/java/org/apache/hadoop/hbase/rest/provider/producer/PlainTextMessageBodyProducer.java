@@ -32,7 +32,6 @@ import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.ext.MessageBodyWriter;
 import javax.ws.rs.ext.Provider;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.rest.Constants;
 
 /**
@@ -43,7 +42,6 @@ import org.apache.hadoop.hbase.rest.Constants;
  */
 @Provider
 @Produces(Constants.MIMETYPE_TEXT)
-@InterfaceAudience.Private
 public class PlainTextMessageBodyProducer 
   implements MessageBodyWriter<Object> {
 

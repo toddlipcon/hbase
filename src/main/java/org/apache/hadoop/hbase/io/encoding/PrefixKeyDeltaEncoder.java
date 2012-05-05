@@ -25,7 +25,6 @@ import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.util.ByteBufferUtils;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -45,7 +44,6 @@ import org.apache.hadoop.io.RawComparator;
  * In a worst case compressed KeyValue will be three bytes longer than original.
  *
  */
-@InterfaceAudience.Private
 public class PrefixKeyDeltaEncoder extends BufferedDataBlockEncoder {
 
   private int addKV(int prevKeyOffset, DataOutputStream out,

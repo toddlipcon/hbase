@@ -21,16 +21,12 @@ package org.apache.hadoop.hbase;
 
 import java.io.IOException;
 
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 
 /**
  * This exception is thrown by the master when a region server clock skew is
  * too high.
  */
 @SuppressWarnings("serial")
-@InterfaceAudience.Public
-@InterfaceStability.Stable
 public class ClockOutOfSyncException extends IOException {
   public ClockOutOfSyncException(String message) {
     super(message);

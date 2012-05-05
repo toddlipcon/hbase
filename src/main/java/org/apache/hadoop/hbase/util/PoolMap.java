@@ -32,8 +32,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 
 /**
  *
@@ -53,8 +51,6 @@ import org.apache.hadoop.classification.InterfaceStability;
  * @param <V>
  *          the type of the resource being pooled
  */
-@InterfaceAudience.Public
-@InterfaceStability.Evolving
 public class PoolMap<K, V> implements Map<K, V> {
   private PoolType poolType;
 

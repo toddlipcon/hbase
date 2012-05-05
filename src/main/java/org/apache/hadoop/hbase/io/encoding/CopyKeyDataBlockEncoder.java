@@ -21,7 +21,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.util.ByteBufferUtils;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.io.RawComparator;
@@ -30,7 +29,6 @@ import org.apache.hadoop.io.RawComparator;
  * Just copy data, do not do any kind of compression. Use for comparison and
  * benchmarking.
  */
-@InterfaceAudience.Private
 public class CopyKeyDataBlockEncoder extends BufferedDataBlockEncoder {
   @Override
   public void internalEncodeKeyValues(DataOutputStream out,

@@ -25,8 +25,6 @@ import java.lang.reflect.InvocationTargetException;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
@@ -40,8 +38,6 @@ import org.apache.hadoop.hdfs.server.namenode.LeaseExpiredException;
 /**
  * Implementation for hdfs
  */
-@InterfaceAudience.Public
-@InterfaceStability.Evolving
 public class FSHDFSUtils extends FSUtils{
   private static final Log LOG = LogFactory.getLog(FSHDFSUtils.class);
 

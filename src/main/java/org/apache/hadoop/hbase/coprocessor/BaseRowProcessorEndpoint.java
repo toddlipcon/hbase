@@ -19,8 +19,6 @@ package org.apache.hadoop.hbase.coprocessor;
 
 import java.io.IOException;
 
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.RowProcessor;
 
@@ -28,8 +26,6 @@ import org.apache.hadoop.hbase.regionserver.RowProcessor;
  * This class demonstrates how to implement atomic read-modify-writes
  * using {@link HRegion#processRowsWithLocks()} and Coprocessor endpoints.
  */
-@InterfaceAudience.Public
-@InterfaceStability.Evolving
 public abstract class BaseRowProcessorEndpoint extends BaseEndpointCoprocessor
     implements RowProcessorProtocol {
 

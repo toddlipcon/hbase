@@ -23,7 +23,6 @@ import java.util.Map;
 import java.util.NavigableMap;
 import java.util.UUID;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.KeyValue;
@@ -89,7 +88,6 @@ import com.google.protobuf.Message;
  * Helper utility to build protocol buffer requests,
  * or build components for protocol buffer requests.
  */
-@InterfaceAudience.Private
 public final class RequestConverter {
 
   private RequestConverter() {

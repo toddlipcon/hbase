@@ -27,7 +27,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.io.WritableComparable;
@@ -43,7 +42,6 @@ import org.apache.hadoop.io.WritableUtils;
  * <p>Some Transactional edits (START, COMMIT, ABORT) will not have an
  * associated row.
  */
-@InterfaceAudience.Private
 public class HLogKey implements WritableComparable<HLogKey> {
   // should be < 0 (@see #readFields(DataInput))
   // version 2 supports HLog compression

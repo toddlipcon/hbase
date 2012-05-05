@@ -27,7 +27,6 @@ import java.util.TreeMap;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
@@ -44,7 +43,6 @@ import org.apache.hadoop.io.compress.DefaultCodec;
  * Implementation of {@link HLog.Writer} that delegates to
  * SequenceFile.Writer.
  */
-@InterfaceAudience.Private
 public class SequenceFileLogWriter implements HLog.Writer {
   static final Text WAL_VERSION_KEY = new Text("version");
   // Let the version be 1.  Let absence of a version meta tag be old, version 0.

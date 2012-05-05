@@ -21,9 +21,7 @@ package org.apache.hadoop.hbase.regionserver.wal;
 
 import java.io.IOException;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 
-@InterfaceAudience.Private
 public class OrphanHLogAfterSplitException extends IOException {
 
   /**

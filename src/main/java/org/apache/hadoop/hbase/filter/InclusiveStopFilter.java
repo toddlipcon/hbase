@@ -20,8 +20,6 @@
 
 package org.apache.hadoop.hbase.filter;
 
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.util.Bytes;
 
@@ -39,8 +37,6 @@ import com.google.common.base.Preconditions;
  *
  * Use this filter to include the stop row, eg: [A,Z].
  */
-@InterfaceAudience.Public
-@InterfaceStability.Stable
 public class InclusiveStopFilter extends FilterBase {
   private byte [] stopRowKey;
   private boolean done = false;

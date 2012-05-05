@@ -21,13 +21,11 @@ package org.apache.hadoop.hbase.regionserver;
 
 import java.io.IOException;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.HRegionInfo;
 
 /**
  * RegionScanner describes iterators over rows in an HRegion.
  */
-@InterfaceAudience.Private
 public interface RegionScanner extends InternalScanner {
   /**
    * @return The RegionInfo for this scanner.

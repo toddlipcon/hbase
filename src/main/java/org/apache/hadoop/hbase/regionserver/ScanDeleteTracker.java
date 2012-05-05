@@ -20,7 +20,6 @@
 
 package org.apache.hadoop.hbase.regionserver;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.util.Bytes;
 
@@ -39,7 +38,6 @@ import org.apache.hadoop.hbase.util.Bytes;
  * <p>
  * This class is NOT thread-safe as queries are never multi-threaded
  */
-@InterfaceAudience.Private
 public class ScanDeleteTracker implements DeleteTracker {
 
   private boolean hasFamilyStamp = false;

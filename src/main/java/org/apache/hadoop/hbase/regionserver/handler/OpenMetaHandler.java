@@ -19,7 +19,6 @@
  */
 package org.apache.hadoop.hbase.regionserver.handler;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.Server;
@@ -30,7 +29,6 @@ import org.apache.hadoop.hbase.regionserver.RegionServerServices;
  * <p>
  * This is executed after receiving an OPEN RPC from the master for meta.
  */
-@InterfaceAudience.Private
 public class OpenMetaHandler extends OpenRegionHandler {
   public OpenMetaHandler(final Server server,
       final RegionServerServices rsServices, HRegionInfo regionInfo,

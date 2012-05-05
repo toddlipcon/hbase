@@ -38,7 +38,6 @@ import java.util.NavigableSet;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
@@ -117,7 +116,6 @@ import com.google.protobuf.RpcController;
  * name and reflection to instantiate class was costing in excess of the cell
  * handling).
  */
-@InterfaceAudience.Private
 public class HbaseObjectWritable implements Writable, WritableWithSize, Configurable {
   protected final static Log LOG = LogFactory.getLog(HbaseObjectWritable.class);
 

@@ -22,7 +22,6 @@ package org.apache.hadoop.hbase.regionserver;
 
 import java.io.IOException;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.regionserver.ScanQueryMatcher.MatchCode;
@@ -31,7 +30,6 @@ import org.apache.hadoop.hbase.util.Bytes;
 /**
  * Keeps track of the columns for a scan if they are not explicitly specified
  */
-@InterfaceAudience.Private
 public class ScanWildcardColumnTracker implements ColumnTracker {
   private byte [] columnBuffer = null;
   private int columnOffset = 0;

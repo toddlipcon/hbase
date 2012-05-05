@@ -24,8 +24,6 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.util.ArrayList;
 
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.hbase.KeyValue;
 import com.google.common.base.Preconditions;
 
@@ -34,8 +32,6 @@ import com.google.common.base.Preconditions;
  * This filter can be used for row-based indexing, where references to other tables are stored across many columns,
  * in order to efficient lookups and paginated results for end users.
  */
-@InterfaceAudience.Public
-@InterfaceStability.Stable
 public class ColumnPaginationFilter extends FilterBase
 {
   private int limit = 0;

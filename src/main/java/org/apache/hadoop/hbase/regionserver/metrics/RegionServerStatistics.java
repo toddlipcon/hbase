@@ -19,7 +19,6 @@
  */
 package org.apache.hadoop.hbase.regionserver.metrics;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.metrics.MetricsMBeanBase;
 import org.apache.hadoop.metrics.util.MBeanUtil;
 import org.apache.hadoop.metrics.util.MetricsRegistry;
@@ -30,7 +29,6 @@ import javax.management.ObjectName;
  * Exports metrics recorded by {@link RegionServerMetrics} as an MBean
  * for JMX monitoring.
  */
-@InterfaceAudience.Private
 public class RegionServerStatistics extends MetricsMBeanBase {
 
   private final ObjectName mbeanName;

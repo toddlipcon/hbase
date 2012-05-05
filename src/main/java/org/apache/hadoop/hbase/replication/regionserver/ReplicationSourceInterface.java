@@ -22,7 +22,6 @@ package org.apache.hadoop.hbase.replication.regionserver;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -31,7 +30,6 @@ import org.apache.hadoop.hbase.Stoppable;
 /**
  * Interface that defines a replication source
  */
-@InterfaceAudience.Private
 public interface ReplicationSourceInterface {
 
   /**

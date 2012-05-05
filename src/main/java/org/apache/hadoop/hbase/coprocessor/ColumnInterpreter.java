@@ -22,8 +22,6 @@ package org.apache.hadoop.hbase.coprocessor;
 
 import java.io.IOException;
 
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.coprocessor.LongColumnInterpreter;
 import org.apache.hadoop.io.Writable;
@@ -47,8 +45,6 @@ import org.apache.hadoop.io.Writable;
  * @param <T> Cell value data type
  * @param <S> Promoted data type
  */
-@InterfaceAudience.Public
-@InterfaceStability.Evolving
 public interface ColumnInterpreter<T, S> extends Writable {
 
   /**

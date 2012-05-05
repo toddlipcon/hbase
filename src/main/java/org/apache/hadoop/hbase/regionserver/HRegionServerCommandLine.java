@@ -22,7 +22,6 @@ package org.apache.hadoop.hbase.regionserver;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.LocalHBaseCluster;
@@ -32,7 +31,6 @@ import org.apache.hadoop.hbase.util.ServerCommandLine;
  * Class responsible for parsing the command line and starting the
  * RegionServer.
  */
-@InterfaceAudience.Private
 public class HRegionServerCommandLine extends ServerCommandLine {
   private static final Log LOG = LogFactory.getLog(HRegionServerCommandLine.class);
 

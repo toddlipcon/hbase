@@ -19,7 +19,6 @@
  */
 package org.apache.hadoop.hbase.regionserver;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 
 
 /**
@@ -30,7 +29,6 @@ import org.apache.hadoop.classification.InterfaceAudience;
  * lease.  Users of the Leases class can use a LeaseListener subclass to, for
  * example, clean up resources after a lease has expired.
  */
-@InterfaceAudience.Private
 public interface LeaseListener {
   /** When a lease expires, this method is called. */
   public void leaseExpired();

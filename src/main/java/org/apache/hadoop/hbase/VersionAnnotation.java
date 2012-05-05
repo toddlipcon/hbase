@@ -19,7 +19,6 @@ package org.apache.hadoop.hbase;
 
 import java.lang.annotation.*;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 
 /**
  * A package attribute that captures the version of hbase that was compiled.
@@ -27,7 +26,6 @@ import org.apache.hadoop.classification.InterfaceAudience;
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.PACKAGE)
-@InterfaceAudience.Private
 public @interface VersionAnnotation {
 
   /**

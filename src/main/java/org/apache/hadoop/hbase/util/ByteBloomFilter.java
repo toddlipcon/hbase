@@ -20,7 +20,6 @@
 
 package org.apache.hadoop.hbase.util;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.io.RawComparator;
 import org.apache.hadoop.io.Writable;
 
@@ -77,7 +76,6 @@ import java.util.Random;
  *      href="http://portal.acm.org/citation.cfm?id=362692&dl=ACM&coll=portal">
  *      Space/Time Trade-Offs in Hash Coding with Allowable Errors</a>
  */
-@InterfaceAudience.Private
 public class ByteBloomFilter implements BloomFilter, BloomFilterWriter {
 
   /** Current file format version */

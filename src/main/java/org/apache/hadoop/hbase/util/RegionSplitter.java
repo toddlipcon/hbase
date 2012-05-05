@@ -40,7 +40,6 @@ import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
@@ -135,7 +134,6 @@ import com.google.common.collect.Sets;
  * grows too large, use this script to perform a network IO safe rolling split
  * of all regions.
  */
-@InterfaceAudience.Private
 public class RegionSplitter {
   static final Log LOG = LogFactory.getLog(RegionSplitter.class);
 

@@ -27,8 +27,6 @@ import java.util.*;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -42,8 +40,6 @@ import org.apache.hadoop.hbase.util.Bytes;
  * This class addresses the HBASE-4168 JIRA. More documentaton on this
  * Filter Language can be found at: https://issues.apache.org/jira/browse/HBASE-4176
  */
-@InterfaceAudience.Public
-@InterfaceStability.Stable
 public class ParseFilter {
   private static final Log LOG = LogFactory.getLog(ParseFilter.class);
 

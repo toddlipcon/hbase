@@ -21,7 +21,6 @@ package org.apache.hadoop.hbase.master.handler;
 
 import java.beans.EventHandler;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.HRegionInfo;
 
 /**
@@ -29,7 +28,6 @@ import org.apache.hadoop.hbase.HRegionInfo;
  * This is a marker interface that can be put on {@link EventHandler}s that
  * have an {@link HRegionInfo}.
  */
-@InterfaceAudience.Private
 public interface TotesHRegionInfo {
   /**
    * @return HRegionInfo instance.

@@ -19,8 +19,6 @@
 
 package org.apache.hadoop.hbase.filter;
 
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.hbase.KeyValue;
 
 import java.util.List;
@@ -34,8 +32,6 @@ import java.util.ArrayList;
  * If you could instantiate FilterBase, it would end up being a "null" filter -
  * that is one that never filters anything.
  */
-@InterfaceAudience.Public
-@InterfaceStability.Stable
 public abstract class FilterBase implements Filter {
 
   /**

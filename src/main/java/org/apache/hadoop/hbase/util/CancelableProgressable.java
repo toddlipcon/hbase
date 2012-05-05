@@ -19,7 +19,6 @@
  */
 package org.apache.hadoop.hbase.util;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 
 /**
  * Similar interface as {@link org.apache.hadoop.util.Progressable} but returns
@@ -27,7 +26,6 @@ import org.apache.hadoop.classification.InterfaceAudience;
  * <p>
  * Used for doing updating of OPENING znode during log replay on region open.
  */
-@InterfaceAudience.Private
 public interface CancelableProgressable {
 
   /**

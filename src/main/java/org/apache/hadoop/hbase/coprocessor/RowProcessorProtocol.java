@@ -19,8 +19,6 @@ package org.apache.hadoop.hbase.coprocessor;
 
 import java.io.IOException;
 
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.hbase.ipc.CoprocessorProtocol;
 import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.RowProcessor;
@@ -30,8 +28,6 @@ import org.apache.hadoop.hbase.regionserver.RowProcessor;
  * See {@link BaseRowProcessorEndpoint} for the implementation.
  * See {@link HRegion#processRowsWithLocks()} for detials.
  */
-@InterfaceAudience.Public
-@InterfaceStability.Evolving
 public interface RowProcessorProtocol extends CoprocessorProtocol {
 
   /**

@@ -22,7 +22,6 @@ package org.apache.hadoop.hbase.ipc;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.HConstants;
@@ -66,7 +65,6 @@ import java.util.Map;
  * All methods in the protocol should throw only IOException.  No field data of
  * the protocol instance is transmitted.
  */
-@InterfaceAudience.Private
 public class HBaseRPC {
   // Leave this out in the hadoop ipc package but keep class name.  Do this
   // so that we dont' get the logging of this class's invocations by doing our

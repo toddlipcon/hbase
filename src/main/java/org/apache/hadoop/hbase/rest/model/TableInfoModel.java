@@ -29,7 +29,6 @@ import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.rest.ProtobufMessageHandler;
 import org.apache.hadoop.hbase.rest.protobuf.generated.TableInfoMessage.TableInfo;
 
@@ -49,7 +48,6 @@ import com.google.protobuf.ByteString;
  * </pre>
  */
 @XmlRootElement(name="TableInfo")
-@InterfaceAudience.Private
 public class TableInfoModel implements Serializable, ProtobufMessageHandler {
   private static final long serialVersionUID = 1L;
 

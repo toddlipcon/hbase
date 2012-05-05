@@ -26,7 +26,6 @@ import java.lang.reflect.Method;
 import java.net.URL;
 import java.util.Map;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.http.HttpServer;
@@ -42,7 +41,6 @@ import org.mortbay.jetty.servlet.DefaultServlet;
  *   "/static/" -> points to common static files (src/hbase-webapps/static)
  *   "/" -> the jsp server code from (src/hbase-webapps/<name>)
  */
-@InterfaceAudience.Private
 public class InfoServer extends HttpServer {
   private final Configuration config;
 

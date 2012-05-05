@@ -20,8 +20,6 @@
 
 package org.apache.hadoop.hbase.coprocessor;
 
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.hbase.CoprocessorEnvironment;
 
 /**
@@ -34,8 +32,6 @@ import org.apache.hadoop.hbase.CoprocessorEnvironment;
  * @param <E> The {@link CoprocessorEnvironment} subclass applicable to the
  *     revelant Observer interface.
  */
-@InterfaceAudience.Public
-@InterfaceStability.Evolving
 public class ObserverContext<E extends CoprocessorEnvironment> {
   private E env;
   private boolean bypass;

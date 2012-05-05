@@ -19,12 +19,10 @@
  */
 package org.apache.hadoop.hbase.util;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 
 /**
  * Uses an incrementing algorithm instead of the default.
  */
-@InterfaceAudience.Private
 public class IncrementingEnvironmentEdge implements EnvironmentEdge {
 
   private long timeIncrement = 1;

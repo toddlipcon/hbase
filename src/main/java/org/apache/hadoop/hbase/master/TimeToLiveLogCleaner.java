@@ -23,7 +23,6 @@ import java.io.IOException;
 
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -32,7 +31,6 @@ import org.apache.commons.logging.LogFactory;
  * Log cleaner that uses the timestamp of the hlog to determine if it should
  * be deleted. By default they are allowed to live for 10 minutes.
  */
-@InterfaceAudience.Private
 public class TimeToLiveLogCleaner implements LogCleanerDelegate {
   static final Log LOG = LogFactory.getLog(TimeToLiveLogCleaner.class.getName());
   private Configuration conf;

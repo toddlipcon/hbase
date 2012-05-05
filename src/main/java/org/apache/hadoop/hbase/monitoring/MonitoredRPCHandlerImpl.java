@@ -19,7 +19,6 @@
  */
 package org.apache.hadoop.hbase.monitoring;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.client.Operation;
 import org.apache.hadoop.hbase.io.WritableWithSize;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -37,7 +36,6 @@ import java.util.Map;
  * handling frequent, short duration tasks. String concatenations and object 
  * allocations are avoided in methods that will be hit by every RPC call.
  */
-@InterfaceAudience.Private
 public class MonitoredRPCHandlerImpl extends MonitoredTaskImpl 
   implements MonitoredRPCHandler {
   private String clientAddress;

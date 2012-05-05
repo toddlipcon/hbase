@@ -25,7 +25,6 @@ import java.util.Iterator;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.UnknownScannerException;
@@ -38,7 +37,6 @@ import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.rest.model.ScannerModel;
 import org.apache.hadoop.util.StringUtils;
 
-@InterfaceAudience.Private
 public class ScannerResultGenerator extends ResultGenerator {
 
   private static final Log LOG =

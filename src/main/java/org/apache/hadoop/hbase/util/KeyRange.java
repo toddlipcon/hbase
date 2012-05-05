@@ -19,12 +19,10 @@
  */
 package org.apache.hadoop.hbase.util;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 
 /**
  * A key range use in split coverage.
  */
-@InterfaceAudience.Private
 public interface KeyRange {
   abstract byte[] getStartKey();
 

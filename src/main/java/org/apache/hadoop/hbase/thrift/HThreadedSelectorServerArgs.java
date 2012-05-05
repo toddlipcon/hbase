@@ -19,7 +19,6 @@
 
 package org.apache.hadoop.hbase.thrift;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.thrift.server.TThreadedSelectorServer;
 import org.apache.thrift.transport.TNonblockingServerTransport;
@@ -29,7 +28,6 @@ import org.slf4j.LoggerFactory;
 /**
  * A TThreadedSelectorServer.Args that reads hadoop configuration
  */
-@InterfaceAudience.Private
 public class HThreadedSelectorServerArgs extends TThreadedSelectorServer.Args {
 
   private static final Logger LOG =

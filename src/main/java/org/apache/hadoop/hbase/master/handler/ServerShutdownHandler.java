@@ -26,7 +26,6 @@ import java.util.NavigableMap;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.Server;
@@ -49,7 +48,6 @@ import org.apache.zookeeper.KeeperException;
  * Server-to-handle must be already in the deadservers lists.  See
  * {@link ServerManager#expireServer(ServerName)}
  */
-@InterfaceAudience.Private
 public class ServerShutdownHandler extends EventHandler {
   private static final Log LOG = LogFactory.getLog(ServerShutdownHandler.class);
   private final ServerName serverName;

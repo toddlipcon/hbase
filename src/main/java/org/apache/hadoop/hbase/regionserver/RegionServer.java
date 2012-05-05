@@ -33,7 +33,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.HConstants.OperationStatusCode;
 import org.apache.hadoop.hbase.HRegionInfo;
@@ -145,7 +144,6 @@ import com.google.protobuf.ServiceException;
  * for possible backward compatibility requests.  This also makes it easier to
  * rip of HRegionInterface later on.
  */
-@InterfaceAudience.Private
 public abstract class RegionServer implements
     ClientProtocol, AdminProtocol, Runnable, RegionServerServices {
 

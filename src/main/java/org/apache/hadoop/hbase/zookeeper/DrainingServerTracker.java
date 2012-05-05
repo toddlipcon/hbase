@@ -24,7 +24,6 @@ import java.util.TreeSet;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.Abortable;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.HServerAddress;
@@ -45,7 +44,6 @@ import org.apache.zookeeper.KeeperException;
  * {@link ServerManager#addServerToDrainList(ServerName)}
  *
  */
-@InterfaceAudience.Private
 public class DrainingServerTracker extends ZooKeeperListener {
   private static final Log LOG = LogFactory.getLog(DrainingServerTracker.class);
 

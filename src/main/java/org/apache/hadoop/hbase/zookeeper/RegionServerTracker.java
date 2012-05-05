@@ -27,7 +27,6 @@ import java.util.TreeSet;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.Abortable;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.master.ServerManager;
@@ -43,7 +42,6 @@ import org.apache.zookeeper.KeeperException;
  * <p>If an RS node gets deleted, this automatically handles calling of
  * {@link ServerManager#expireServer(ServerName)}
  */
-@InterfaceAudience.Private
 public class RegionServerTracker extends ZooKeeperListener {
   private static final Log LOG = LogFactory.getLog(RegionServerTracker.class);
   private NavigableSet<ServerName> regionServers = new TreeSet<ServerName>();

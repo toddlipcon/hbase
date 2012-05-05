@@ -31,8 +31,6 @@ import java.util.Map;
 import java.util.NavigableMap;
 import java.util.TreeMap;
 
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValue.SplitKeyValue;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
@@ -67,8 +65,6 @@ import org.apache.hadoop.io.Writable;
  * through {@link KeyValue#getRow()}, {@link KeyValue#getFamily()}, {@link KeyValue#getQualifier()},
  * {@link KeyValue#getTimestamp()}, and {@link KeyValue#getValue()}.
  */
-@InterfaceAudience.Public
-@InterfaceStability.Stable
 public class Result implements Writable, WritableWithSize {
   private static final byte RESULT_VERSION = (byte)1;
 

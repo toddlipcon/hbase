@@ -21,15 +21,11 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Map;
 
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 
 /**
  * Get, remove and modify table descriptors.
  * Used by servers to host descriptors.
  */
-@InterfaceAudience.Public
-@InterfaceStability.Evolving
 public interface TableDescriptors {
   /**
    * @param tablename

@@ -26,11 +26,7 @@ import java.lang.reflect.UndeclaredThrowableException;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 
-@InterfaceAudience.Public
-@InterfaceStability.Stable
 public class Methods {
   private static Log LOG = LogFactory.getLog(Methods.class);
 

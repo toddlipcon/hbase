@@ -20,7 +20,6 @@
 
 package org.apache.hadoop.hbase.zookeeper;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.Abortable;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos;
@@ -34,7 +33,6 @@ import com.google.protobuf.InvalidProtocolBufferException;
  * master on startup, and is subsequently available to all watchers (including
  * clients).
  */
-@InterfaceAudience.Private
 public class ClusterId {
   private ZooKeeperWatcher watcher;
   private Abortable abortable;

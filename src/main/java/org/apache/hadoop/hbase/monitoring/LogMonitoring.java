@@ -29,7 +29,6 @@ import java.nio.channels.FileChannel;
 import java.util.Enumeration;
 import java.util.Set;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.log4j.Appender;
 import org.apache.log4j.FileAppender;
@@ -41,7 +40,6 @@ import com.google.common.collect.Sets;
  * Utility functions for reading the log4j logs that are
  * being written by HBase.
  */
-@InterfaceAudience.Private
 public abstract class LogMonitoring {
   public static Set<File> getActiveLogFiles() throws IOException {
     Set<File> ret = Sets.newHashSet();

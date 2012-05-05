@@ -32,8 +32,6 @@ import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.BlockLocation;
 import org.apache.hadoop.fs.FSDataInputStream;
@@ -57,8 +55,6 @@ import org.apache.hadoop.util.StringUtils;
 /**
  * Utility methods for interacting with the underlying file system.
  */
-@InterfaceAudience.Public
-@InterfaceStability.Evolving
 public abstract class FSUtils {
   private static final Log LOG = LogFactory.getLog(FSUtils.class);
 

@@ -23,8 +23,6 @@ import java.net.UnknownHostException;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.NotServingRegionException;
@@ -45,8 +43,6 @@ import com.google.protobuf.ServiceException;
  * Retries scanner operations such as create, next, etc.
  * Used by {@link ResultScanner}s made by {@link HTable}.
  */
-@InterfaceAudience.Public
-@InterfaceStability.Stable
 public class ScannerCallable extends ServerCallable<Result[]> {
   private static final Log LOG = LogFactory.getLog(ScannerCallable.class);
   private long scannerId = -1L;

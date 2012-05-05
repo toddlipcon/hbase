@@ -20,7 +20,6 @@
 
 package org.apache.hadoop.hbase.ipc;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.metrics.util.MBeanUtil;
 import org.apache.hadoop.metrics.util.MetricsDynamicMBeanBase;
 import org.apache.hadoop.metrics.util.MetricsRegistry;
@@ -31,7 +30,6 @@ import javax.management.ObjectName;
  * Exports HBase RPC statistics recorded in {@link HBaseRpcMetrics} as an MBean
  * for JMX monitoring.
  */
-@InterfaceAudience.Private
 public class HBaseRPCStatistics extends MetricsDynamicMBeanBase {
   private final ObjectName mbeanName;
 

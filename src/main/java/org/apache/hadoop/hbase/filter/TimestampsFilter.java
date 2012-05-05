@@ -25,8 +25,6 @@ import java.util.List;
 import java.util.TreeSet;
 import java.util.ArrayList;
 
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.hbase.KeyValue;
 import com.google.common.base.Preconditions;
 
@@ -39,8 +37,6 @@ import com.google.common.base.Preconditions;
  * {@link org.apache.hadoop.hbase.client.Scan#setTimeRange(long, long)}, {@link org.apache.hadoop.hbase.client.Get#setTimeStamp(long)},
  * or {@link org.apache.hadoop.hbase.client.Scan#setTimeStamp(long)}.
  */
-@InterfaceAudience.Public
-@InterfaceStability.Stable
 public class TimestampsFilter extends FilterBase {
 
   TreeSet<Long> timestamps;

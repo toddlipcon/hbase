@@ -29,8 +29,6 @@ import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.hbase.io.HeapSize;
 import org.apache.hadoop.hbase.io.hfile.HFile;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -66,8 +64,6 @@ import com.google.common.primitives.Longs;
  * be < <code>Integer.MAX_SIZE</code>.
  * The column does not contain the family/qualifier delimiter, {@link #COLUMN_FAMILY_DELIMITER}
  */
-@InterfaceAudience.Public
-@InterfaceStability.Evolving
 public class KeyValue implements Writable, HeapSize {
   static final Log LOG = LogFactory.getLog(KeyValue.class);
   // TODO: Group Key-only comparators and operations into a Key class, just

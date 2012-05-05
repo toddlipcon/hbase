@@ -19,7 +19,6 @@
  */
 package org.apache.hadoop.hbase.regionserver;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.HConstants.OperationStatusCode;
 /**
  * 
@@ -29,7 +28,6 @@ import org.apache.hadoop.hbase.HConstants.OperationStatusCode;
  * the operation status in future.
  *
  */
-@InterfaceAudience.Private
 public class OperationStatus {
 
   /** Singleton for successful operations.  */

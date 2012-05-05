@@ -22,13 +22,9 @@ import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.regionserver.wal.WALEdit;
 
-@InterfaceAudience.Public
-@InterfaceStability.Evolving
 
 /**
  * Defines the procedure to atomically perform multiple scans and mutations

@@ -22,7 +22,6 @@ package org.apache.hadoop.hbase.regionserver;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import com.google.common.base.Preconditions;
 
@@ -47,7 +46,6 @@ import com.google.common.base.Preconditions;
  * Bytes.toLong/Bytes.toInt calls in KeyValue, but some of those are cached
  * anyway
  */
-@InterfaceAudience.Private
 public class MemStoreLAB {
   private AtomicReference<Chunk> curChunk = new AtomicReference<Chunk>();
 

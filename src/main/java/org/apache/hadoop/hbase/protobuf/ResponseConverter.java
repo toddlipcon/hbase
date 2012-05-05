@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CloseRegionResponse;
@@ -42,7 +41,6 @@ import com.google.protobuf.ByteString;
  * Helper utility to build protocol buffer responses,
  * or retrieve data from protocol buffer responses.
  */
-@InterfaceAudience.Private
 public final class ResponseConverter {
 
   private ResponseConverter() {

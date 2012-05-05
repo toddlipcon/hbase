@@ -21,7 +21,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValue.SamePrefixComparator;
 import org.apache.hadoop.hbase.io.hfile.BlockType;
@@ -34,7 +33,6 @@ import org.apache.hadoop.io.WritableUtils;
 /**
  * Base class for all data block encoders that use a buffer.
  */
-@InterfaceAudience.Private
 abstract class BufferedDataBlockEncoder implements DataBlockEncoder {
 
   private static int INITIAL_KEY_BUFFER_SIZE = 512;

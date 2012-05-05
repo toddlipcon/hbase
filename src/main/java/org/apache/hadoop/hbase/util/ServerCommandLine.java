@@ -24,7 +24,6 @@ import java.lang.management.ManagementFactory;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -34,7 +33,6 @@ import org.apache.hadoop.util.ToolRunner;
 /**
  * Base class for command lines that start up various HBase daemons.
  */
-@InterfaceAudience.Private
 public abstract class ServerCommandLine extends Configured implements Tool {
   private static final Log LOG = LogFactory.getLog(ServerCommandLine.class);
 

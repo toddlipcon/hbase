@@ -21,9 +21,7 @@ package org.apache.hadoop.hbase.util;
 
 import java.util.concurrent.TimeUnit;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 
-@InterfaceAudience.Private
 public class RetryCounterFactory {
   private final int maxRetries;
   private final int retryIntervalMillis;

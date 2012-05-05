@@ -24,7 +24,6 @@ import java.lang.reflect.Method;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.ServerCallable;
@@ -39,7 +38,6 @@ import org.apache.hadoop.hbase.util.Bytes;
  * separate RPC call for each method invocation (using a
  * {@link org.apache.hadoop.hbase.client.ServerCallable} instance).
  */
-@InterfaceAudience.Private
 public class ExecRPCInvoker implements InvocationHandler {
   // LOG is NOT in hbase subpackage intentionally so that the default HBase
   // DEBUG log level does NOT emit RPC-level logging. 

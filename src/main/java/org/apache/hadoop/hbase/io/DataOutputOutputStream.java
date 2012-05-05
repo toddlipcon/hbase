@@ -21,12 +21,10 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.io.OutputStream;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 
 /**
  * OutputStream implementation that wraps a DataOutput.
  */
-@InterfaceAudience.Private
 public class DataOutputOutputStream extends OutputStream {
 
   private final DataOutput out;

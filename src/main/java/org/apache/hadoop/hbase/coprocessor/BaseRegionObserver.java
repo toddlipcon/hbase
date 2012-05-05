@@ -21,8 +21,6 @@ import java.util.Map;
 
 import com.google.common.collect.ImmutableList;
 
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.hbase.CoprocessorEnvironment;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.KeyValue;
@@ -50,8 +48,6 @@ import java.io.IOException;
  * By extending it, you can create your own region observer without
  * overriding all abstract methods of RegionObserver.
  */
-@InterfaceAudience.Public
-@InterfaceStability.Evolving
 public abstract class BaseRegionObserver implements RegionObserver {
   @Override
   public void start(CoprocessorEnvironment e) throws IOException { }

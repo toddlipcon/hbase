@@ -26,7 +26,6 @@ import java.util.List;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.io.hfile.HFile;
 import org.apache.hadoop.hbase.metrics.ExactCounterMetric;
 import org.apache.hadoop.hbase.metrics.HBaseInfo;
@@ -57,7 +56,6 @@ import org.apache.hadoop.util.StringUtils;
  * This class has a number of metrics variables that are publicly accessible;
  * these variables (objects) have methods to update their values.
  */
-@InterfaceAudience.Private
 public class RegionServerMetrics implements Updater {
   @SuppressWarnings({"FieldCanBeLocal"})
   private final Log LOG = LogFactory.getLog(this.getClass());

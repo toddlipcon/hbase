@@ -23,8 +23,6 @@ import java.io.IOException;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapreduce.OutputFormat;
 
@@ -50,8 +48,6 @@ import org.apache.hadoop.mapreduce.OutputFormat;
  * {@link org.apache.hadoop.hbase.client.Delete Delete} define the
  * row and columns implicitly.
  */
-@InterfaceAudience.Public
-@InterfaceStability.Stable
 public class IdentityTableReducer
 extends TableReducer<Writable, Writable, Writable> {
 

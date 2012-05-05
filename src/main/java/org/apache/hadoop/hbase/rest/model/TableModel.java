@@ -25,7 +25,6 @@ import java.io.Serializable;
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlRootElement;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 
 /**
  * Simple representation of a table name.
@@ -39,7 +38,6 @@ import org.apache.hadoop.classification.InterfaceAudience;
  * </pre>
  */
 @XmlRootElement(name="table")
-@InterfaceAudience.Private
 public class TableModel implements Serializable {
 
 	private static final long serialVersionUID = 1L;

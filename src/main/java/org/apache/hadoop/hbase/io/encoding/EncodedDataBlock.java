@@ -26,7 +26,6 @@ import java.nio.ByteBuffer;
 import java.util.Iterator;
 
 import org.apache.commons.lang.NotImplementedException;
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.io.hfile.Compression;
 import org.apache.hadoop.hbase.io.hfile.Compression.Algorithm;
@@ -41,7 +40,6 @@ import com.google.common.io.NullOutputStream;
  * Encapsulates a data block compressed using a particular encoding algorithm.
  * Useful for testing and benchmarking.
  */
-@InterfaceAudience.Private
 public class EncodedDataBlock {
   private byte[] rawKVs;
   private ByteBuffer rawBuffer;

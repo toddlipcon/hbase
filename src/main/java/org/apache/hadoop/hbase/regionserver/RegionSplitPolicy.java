@@ -20,7 +20,6 @@ package org.apache.hadoop.hbase.regionserver;
 import java.io.IOException;
 import java.util.Map;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.hbase.HConstants;
@@ -33,7 +32,6 @@ import com.google.common.base.Preconditions;
  * A split policy determines when a region should be split.
  * {@see ConstantSizeRegionSplitPolicy}
  */
-@InterfaceAudience.Private
 public abstract class RegionSplitPolicy extends Configured {
   private static final Class<? extends RegionSplitPolicy>
     DEFAULT_SPLIT_POLICY_CLASS = IncreasingToUpperBoundRegionSplitPolicy.class;

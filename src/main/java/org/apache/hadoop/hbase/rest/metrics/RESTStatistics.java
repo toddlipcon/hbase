@@ -22,13 +22,11 @@ package org.apache.hadoop.hbase.rest.metrics;
 
 import javax.management.ObjectName;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.metrics.MetricsMBeanBase;
 
 import org.apache.hadoop.metrics.util.MBeanUtil;
 import org.apache.hadoop.metrics.util.MetricsRegistry;
 
-@InterfaceAudience.Private
 public class RESTStatistics  extends MetricsMBeanBase {
   private final ObjectName mbeanName;
 

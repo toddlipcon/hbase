@@ -30,7 +30,6 @@ import org.apache.avro.ipc.specific.SpecificResponder;
 import org.apache.avro.util.Utf8;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HTableDescriptor;
@@ -60,7 +59,6 @@ import org.apache.hadoop.hbase.util.Bytes;
 /**
  * Start an Avro server
  */
-@InterfaceAudience.Private
 public class AvroServer {
 
   /**

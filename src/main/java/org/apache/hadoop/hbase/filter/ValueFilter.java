@@ -20,8 +20,6 @@
 
 package org.apache.hadoop.hbase.filter;
 
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.hbase.KeyValue;
 
 import java.util.ArrayList;
@@ -39,8 +37,6 @@ import java.util.ArrayList;
  * To test the value of a single qualifier when scanning multiple qualifiers,
  * use {@link SingleColumnValueFilter}.
  */
-@InterfaceAudience.Public
-@InterfaceStability.Stable
 public class ValueFilter extends CompareFilter {
 
   /**

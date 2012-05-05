@@ -19,7 +19,6 @@
  */
 package org.apache.hadoop.hbase.util;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.migration.HRegionInfo090x;
 import org.apache.hadoop.io.DataInputBuffer;
@@ -36,7 +35,6 @@ import java.util.List;
 /**
  * Utility class with methods for manipulating Writable objects
  */
-@InterfaceAudience.Private
 public class Writables {
   /**
    * @param w writable

@@ -25,7 +25,6 @@ import java.io.OutputStream;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.IOUtils;
@@ -43,7 +42,6 @@ import org.apache.hadoop.util.ReflectionUtils;
  * Compression related stuff.
  * Copied from hadoop-3315 tfile.
  */
-@InterfaceAudience.Private
 public final class Compression {
   static final Log LOG = LogFactory.getLog(Compression.class);
 

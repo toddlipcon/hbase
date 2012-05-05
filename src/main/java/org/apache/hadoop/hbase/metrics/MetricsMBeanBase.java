@@ -32,7 +32,6 @@ import javax.management.ReflectionException;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.metrics.util.MetricsBase;
 import org.apache.hadoop.metrics.util.MetricsDynamicMBeanBase;
 import org.apache.hadoop.metrics.util.MetricsRegistry;
@@ -44,7 +43,6 @@ import org.apache.hadoop.metrics.util.MetricsRegistry;
  * org.apache.hadoop.metrics.util implementations.
  *
  */
-@InterfaceAudience.Private
 public class MetricsMBeanBase extends MetricsDynamicMBeanBase {
 
   private static final Log LOG = LogFactory.getLog("org.apache.hadoop.hbase.metrics");

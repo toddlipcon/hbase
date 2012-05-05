@@ -26,8 +26,6 @@ import java.util.Iterator;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 
 /**
  * Simple {@link java.util.SortedSet} implementation that uses an internal
@@ -46,8 +44,6 @@ import org.apache.hadoop.classification.InterfaceStability;
  * @param <E> A class implementing {@link java.lang.Comparable} or able to be
  * compared by a provided comparator.
  */
-@InterfaceAudience.Public
-@InterfaceStability.Stable
 public class SortedCopyOnWriteSet<E> implements SortedSet<E> {
   private volatile SortedSet<E> internalSet;
 

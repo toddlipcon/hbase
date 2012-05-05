@@ -21,8 +21,6 @@ package org.apache.hadoop.hbase.mapreduce;
 
 import java.io.IOException;
 
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.KeyValue;
@@ -39,8 +37,6 @@ import org.apache.hadoop.util.GenericOptionsParser;
  * A job with a just a map phase to count rows. Map outputs table rows IF the
  * input row has columns that have content.
  */
-@InterfaceAudience.Public
-@InterfaceStability.Stable
 public class RowCounter {
 
   /** Name of this 'program'. */

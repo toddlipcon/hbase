@@ -28,7 +28,6 @@ import java.util.List;
 import javax.xml.bind.annotation.XmlElementRef;
 import javax.xml.bind.annotation.XmlRootElement;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.rest.ProtobufMessageHandler;
 import org.apache.hadoop.hbase.rest.protobuf.generated.TableListMessage.TableList;
 
@@ -36,7 +35,6 @@ import org.apache.hadoop.hbase.rest.protobuf.generated.TableListMessage.TableLis
  * Simple representation of a list of table names.
  */
 @XmlRootElement(name="TableList")
-@InterfaceAudience.Private
 public class TableListModel implements Serializable, ProtobufMessageHandler {
 
 	private static final long serialVersionUID = 1L;

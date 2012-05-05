@@ -25,7 +25,6 @@ import java.util.List;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.hbase.HConstants;
@@ -41,7 +40,6 @@ import org.apache.hadoop.util.StringUtils;
  * Compact passed set of files.
  * Create an instance and then call {@ink #compact(Store, Collection, boolean, long)}.
  */
-@InterfaceAudience.Private
 class Compactor extends Configured {
   private static final Log LOG = LogFactory.getLog(Compactor.class);
   private CompactionProgress progress;

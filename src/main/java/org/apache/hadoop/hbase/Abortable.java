@@ -19,7 +19,6 @@
  */
 package org.apache.hadoop.hbase;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 
 /**
  * Interface to support the aborting of a given server or client.
@@ -29,7 +28,6 @@ import org.apache.hadoop.classification.InterfaceAudience;
  * <p>
  * Implemented by the Master, RegionServer, and TableServers (client).
  */
-@InterfaceAudience.Private
 public interface Abortable {
   /**
    * Abort the server or client.

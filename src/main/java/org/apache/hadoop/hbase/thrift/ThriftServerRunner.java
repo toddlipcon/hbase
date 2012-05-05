@@ -43,7 +43,6 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.OptionGroup;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
@@ -106,7 +105,6 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
  * ThriftServerRunner - this class starts up a Thrift server which implements
  * the Hbase API specified in the Hbase.thrift IDL file.
  */
-@InterfaceAudience.Private
 public class ThriftServerRunner implements Runnable {
 
   private static final Log LOG = LogFactory.getLog(ThriftServerRunner.class);

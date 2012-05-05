@@ -34,8 +34,6 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -55,8 +53,6 @@ import org.apache.hadoop.hbase.util.Writables;
 /**
  * Implements pretty-printing functionality for {@link HFile}s.
  */
-@InterfaceAudience.Public
-@InterfaceStability.Evolving
 public class HFilePrettyPrinter {
 
   private static final Log LOG = LogFactory.getLog(HFilePrettyPrinter.class);

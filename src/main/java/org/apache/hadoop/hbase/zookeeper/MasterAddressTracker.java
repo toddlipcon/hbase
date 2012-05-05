@@ -19,7 +19,6 @@ package org.apache.hadoop.hbase.zookeeper;
 
 import java.io.IOException;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.Abortable;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
@@ -45,7 +44,6 @@ import org.apache.zookeeper.KeeperException;
  * This class also includes utility for interacting with the master znode, for
  * writing and reading the znode content.
  */
-@InterfaceAudience.Private
 public class MasterAddressTracker extends ZooKeeperNodeTracker {
   /**
    * Construct a master address listener with the specified

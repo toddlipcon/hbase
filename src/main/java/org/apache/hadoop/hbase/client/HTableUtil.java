@@ -26,8 +26,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.hbase.HRegionLocation;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
@@ -38,8 +36,6 @@ import org.apache.hadoop.hbase.client.Row;
  * 
  *
  */
-@InterfaceAudience.Public
-@InterfaceStability.Stable
 public class HTableUtil {
 
   private static final int INITIAL_LIST_SIZE = 250;

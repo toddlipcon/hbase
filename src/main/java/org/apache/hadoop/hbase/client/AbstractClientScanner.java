@@ -20,14 +20,10 @@ package org.apache.hadoop.hbase.client;
 import java.io.IOException;
 import java.util.Iterator;
 
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 
 /**
  * Helper class for custom client scanners.
  */
-@InterfaceAudience.Public
-@InterfaceStability.Stable
 public abstract class AbstractClientScanner implements ResultScanner {
 
   @Override

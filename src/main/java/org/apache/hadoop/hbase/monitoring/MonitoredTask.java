@@ -22,9 +22,7 @@ package org.apache.hadoop.hbase.monitoring;
 import java.io.IOException;
 import java.util.Map;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 
-@InterfaceAudience.Private
 public interface MonitoredTask extends Cloneable {
   enum State {
     RUNNING,

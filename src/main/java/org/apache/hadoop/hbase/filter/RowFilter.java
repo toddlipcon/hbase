@@ -22,8 +22,6 @@ package org.apache.hadoop.hbase.filter;
 
 import java.util.ArrayList;
 
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Scan;
 
@@ -39,8 +37,6 @@ import org.apache.hadoop.hbase.client.Scan;
  * If an already known row range needs to be scanned, use {@link Scan} start
  * and stop rows directly rather than a filter.
  */
-@InterfaceAudience.Public
-@InterfaceStability.Stable
 public class RowFilter extends CompareFilter {
 
   private boolean filterOutRow = false;

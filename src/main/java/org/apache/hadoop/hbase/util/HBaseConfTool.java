@@ -20,7 +20,6 @@
 
 package org.apache.hadoop.hbase.util;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 
@@ -28,7 +27,6 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
  * Tool that prints out a configuration.
  * Pass the configuration key on the command-line.
  */
-@InterfaceAudience.Private
 public class HBaseConfTool {
   public static void main(String args[]) {
     if (args.length < 1) {

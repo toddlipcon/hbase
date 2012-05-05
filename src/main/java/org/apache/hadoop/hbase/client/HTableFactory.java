@@ -19,8 +19,6 @@
  */
 package org.apache.hadoop.hbase.client;
 
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 
 import java.io.IOException;
@@ -30,8 +28,6 @@ import java.io.IOException;
  *
  * @since 0.21.0
  */
-@InterfaceAudience.Public
-@InterfaceStability.Stable
 public class HTableFactory implements HTableInterfaceFactory {
   @Override
   public HTableInterface createHTableInterface(Configuration config,

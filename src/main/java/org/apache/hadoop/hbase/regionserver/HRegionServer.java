@@ -53,7 +53,6 @@ import javax.management.ObjectName;
 import org.apache.commons.lang.mutable.MutableDouble;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -164,7 +163,6 @@ import com.google.common.collect.Lists;
  * HRegionServer makes a set of HRegions available to clients. It checks in with
  * the HMaster. There are many HRegionServers in a single HBase deployment.
  */
-@InterfaceAudience.Private
 public class HRegionServer extends RegionServer
     implements HRegionInterface, HBaseRPCErrorHandler {
 

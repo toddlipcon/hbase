@@ -25,8 +25,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.io.HbaseObjectWritable;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -38,8 +36,6 @@ import org.apache.hadoop.hbase.util.Bytes;
  * The mutations are performed in the order in which they
  * were added.
  */
-@InterfaceAudience.Public
-@InterfaceStability.Evolving
 public class RowMutations implements Row {
   private List<Mutation> mutations = new ArrayList<Mutation>();
   private byte [] row;

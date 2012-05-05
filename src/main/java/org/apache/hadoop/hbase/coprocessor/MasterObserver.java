@@ -20,8 +20,6 @@
 
 package org.apache.hadoop.hbase.coprocessor;
 
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.hbase.*;
 
 import java.io.IOException;
@@ -30,8 +28,6 @@ import java.io.IOException;
  * Defines coprocessor hooks for interacting with operations on the
  * {@link org.apache.hadoop.hbase.master.HMaster} process.
  */
-@InterfaceAudience.Public
-@InterfaceStability.Evolving
 public interface MasterObserver extends Coprocessor {
 
   /**

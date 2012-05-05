@@ -17,7 +17,6 @@
  */
 package org.apache.hadoop.hbase.constraint;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.client.Put;
@@ -62,7 +61,6 @@ import org.apache.hadoop.hbase.client.Put;
  * @see BaseConstraint
  * @see Constraints
  */
-@InterfaceAudience.Private
 public interface Constraint extends Configurable {
 
   /**

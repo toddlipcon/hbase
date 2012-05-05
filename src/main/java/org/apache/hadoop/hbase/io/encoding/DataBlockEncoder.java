@@ -20,7 +20,6 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.io.hfile.Compression.Algorithm;
 import org.apache.hadoop.io.RawComparator;
@@ -39,7 +38,6 @@ import org.apache.hadoop.io.RawComparator;
  * compression algorithm is specified in HFileBlockEncodingContext argument of
  * {@link #encodeKeyValues(ByteBuffer, boolean, HFileBlockEncodingContext)}.
  */
-@InterfaceAudience.Private
 public interface DataBlockEncoder {
 
   /**

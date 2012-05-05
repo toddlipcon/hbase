@@ -19,7 +19,6 @@
  */
 package org.apache.hadoop.hbase.replication.regionserver;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.metrics.MetricsMBeanBase;
 import org.apache.hadoop.metrics.util.MBeanUtil;
 import org.apache.hadoop.metrics.util.MetricsRegistry;
@@ -30,7 +29,6 @@ import javax.management.ObjectName;
  * Exports metrics recorded by {@link ReplicationSourceMetrics} as an MBean
  * for JMX monitoring.
  */
-@InterfaceAudience.Private
 public class ReplicationStatistics extends MetricsMBeanBase {
 
   private final ObjectName mbeanName;

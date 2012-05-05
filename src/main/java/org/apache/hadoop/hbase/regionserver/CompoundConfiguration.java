@@ -29,7 +29,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -51,7 +50,6 @@ import org.apache.hadoop.util.StringUtils;
  * on the HBase side when certain HDFS changes are added & ubiquitous. Will
  * revisit expanding access at that point.
  */
-@InterfaceAudience.Private
 class CompoundConfiguration extends Configuration {
   /**
    * Default Constructor. Initializes empty configuration
