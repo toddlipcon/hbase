@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.NavigableSet;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -342,6 +343,11 @@ class StoreScanner extends NonLazyKeyValueScanner
     if ((matcher.row == null) || !peeked.matchingRow(matcher.row)) {
       matcher.setRow(peeked.getRow());
     }
+    
+    AtomicLong metricLong = null;
+    if (metric != null) {
+      metricLong = RegionMetricsStorage.getNumericMetricRef(this.metricNamePrefix + metric);
+    }
 
     KeyValue kv;
     KeyValue prevKV = null;
@@ -371,9 +377,8 @@ class StoreScanner extends NonLazyKeyValueScanner
           }
           results.add(kv);
 
-          if (metric != null) {
-            RegionMetricsStorage.incrNumericMetric(this.metricNamePrefix + metric,
-                kv.getLength());
+          if (metricLong != null) {
+            metricLong.addAndGet(kv.getLength());
           }
 
           if (qcode == ScanQueryMatcher.MatchCode.INCLUDE_AND_SEEK_NEXT_ROW) {

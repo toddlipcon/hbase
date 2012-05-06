@@ -62,6 +62,14 @@ public class RegionMetricsStorage {
   public static Map<String, Pair<AtomicLong, AtomicInteger>> getTimeVaryingMetrics() {
     return timeVaryingMetrics;
   }
+  
+  public static AtomicLong getNumericMetricRef(String key) {
+    AtomicLong oldVal = numericMetrics.get(key);
+    if (oldVal == null) {
+      oldVal = numericMetrics.putIfAbsent(key, new AtomicLong());
+    }
+    return oldVal;
+  }
 
   public static void incrNumericMetric(String key, long amount) {
     AtomicLong oldVal = numericMetrics.get(key);
