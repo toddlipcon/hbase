@@ -4,8 +4,9 @@
  * http://creativecommons.org/publicdomain/zero/1.0/
  */
 
-package java.util.concurrent;
+package org.apache.hadoop.hbase.util;
 import java.util.*;
+import java.util.concurrent.ConcurrentNavigableMap;
 
 /**
  * A scalable concurrent {@link ConcurrentNavigableMap} implementation.
@@ -60,7 +61,7 @@ import java.util.*;
  * @param <V> the type of mapped values
  * @since 1.6
  */
-public class ConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
+public class HConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
     implements ConcurrentNavigableMap<K,V>,
                Cloneable,
                java.io.Serializable {
@@ -1349,7 +1350,7 @@ public class ConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
      * Constructs a new, empty map, sorted according to the
      * {@linkplain Comparable natural ordering} of the keys.
      */
-    public ConcurrentSkipListMap() {
+    public HConcurrentSkipListMap() {
         this.comparator = null;
         initialize();
     }
@@ -1362,7 +1363,7 @@ public class ConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
      *        If <tt>null</tt>, the {@linkplain Comparable natural
      *        ordering} of the keys will be used.
      */
-    public ConcurrentSkipListMap(Comparator<? super K> comparator) {
+    public HConcurrentSkipListMap(Comparator<? super K> comparator) {
         this.comparator = comparator;
         initialize();
     }
@@ -1378,7 +1379,7 @@ public class ConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
      * @throws NullPointerException if the specified map or any of its keys
      *         or values are null
      */
-    public ConcurrentSkipListMap(Map<? extends K, ? extends V> m) {
+    public HConcurrentSkipListMap(Map<? extends K, ? extends V> m) {
         this.comparator = null;
         initialize();
         putAll(m);
@@ -1393,7 +1394,7 @@ public class ConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
      * @throws NullPointerException if the specified sorted map or any of
      *         its keys or values are null
      */
-    public ConcurrentSkipListMap(SortedMap<K, ? extends V> m) {
+    public HConcurrentSkipListMap(SortedMap<K, ? extends V> m) {
         this.comparator = m.comparator();
         initialize();
         buildFromSorted(m);
@@ -1405,11 +1406,11 @@ public class ConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
      *
      * @return a shallow copy of this map
      */
-    public ConcurrentSkipListMap<K,V> clone() {
+    public HConcurrentSkipListMap<K,V> clone() {
         try {
             @SuppressWarnings("unchecked")
-            ConcurrentSkipListMap<K,V> clone =
-                (ConcurrentSkipListMap<K,V>) super.clone();
+            HConcurrentSkipListMap<K,V> clone =
+                (HConcurrentSkipListMap<K,V>) super.clone();
             clone.initialize();
             clone.buildFromSorted(this);
             return clone;
@@ -2213,7 +2214,7 @@ public class ConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
                 throw new IllegalStateException();
             // It would not be worth all of the overhead to directly
             // unlink from here. Using remove is fast enough.
-            ConcurrentSkipListMap.this.remove(l.key);
+            HConcurrentSkipListMap.this.remove(l.key);
             lastReturned = null;
         }
 
@@ -2299,10 +2300,10 @@ public class ConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
             return (e == null) ? null : e.getKey();
         }
         public Iterator<E> iterator() {
-            if (m instanceof ConcurrentSkipListMap)
-                return ((ConcurrentSkipListMap<E,Object>)m).keyIterator();
+            if (m instanceof HConcurrentSkipListMap)
+                return ((HConcurrentSkipListMap<E,Object>)m).keyIterator();
             else
-                return ((ConcurrentSkipListMap.SubMap<E,Object>)m).keyIterator();
+                return ((HConcurrentSkipListMap.SubMap<E,Object>)m).keyIterator();
         }
         public boolean equals(Object o) {
             if (o == this)
@@ -2356,8 +2357,8 @@ public class ConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
             m = map;
         }
         public Iterator<E> iterator() {
-            if (m instanceof ConcurrentSkipListMap)
-                return ((ConcurrentSkipListMap<?,E>)m).valueIterator();
+            if (m instanceof HConcurrentSkipListMap)
+                return ((HConcurrentSkipListMap<?,E>)m).valueIterator();
             else
                 return ((SubMap<?,E>)m).valueIterator();
         }
@@ -2384,8 +2385,8 @@ public class ConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
         }
 
         public Iterator<Map.Entry<K1,V1>> iterator() {
-            if (m instanceof ConcurrentSkipListMap)
-                return ((ConcurrentSkipListMap<K1,V1>)m).entryIterator();
+            if (m instanceof HConcurrentSkipListMap)
+                return ((HConcurrentSkipListMap<K1,V1>)m).entryIterator();
             else
                 return ((SubMap<K1,V1>)m).entryIterator();
         }
@@ -2432,7 +2433,7 @@ public class ConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
     }
 
     /**
-     * Submaps returned by {@link ConcurrentSkipListMap} submap operations
+     * Submaps returned by {@link HConcurrentSkipListMap} submap operations
      * represent a subrange of mappings of their underlying
      * maps. Instances of this class support all methods of their
      * underlying maps, differing in that mappings outside their range are
@@ -2449,7 +2450,7 @@ public class ConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
         private static final long serialVersionUID = -7647078645895051609L;
 
         /** Underlying map */
-        private final ConcurrentSkipListMap<K,V> m;
+        private final HConcurrentSkipListMap<K,V> m;
         /** lower bound key, or null if from start */
         private final K lo;
         /** upper bound key, or null if to end */
@@ -2469,7 +2470,7 @@ public class ConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
         /**
          * Creates a new submap, initializing all fields
          */
-        SubMap(ConcurrentSkipListMap<K,V> map,
+        SubMap(HConcurrentSkipListMap<K,V> map,
                K fromKey, boolean fromInclusive,
                K toKey, boolean toInclusive,
                boolean isDescending) {
@@ -2518,7 +2519,7 @@ public class ConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
         /**
          * Returns true if node key is less than upper bound of range
          */
-        private boolean isBeforeEnd(ConcurrentSkipListMap.Node<K,V> n) {
+        private boolean isBeforeEnd(HConcurrentSkipListMap.Node<K,V> n) {
             if (n == null)
                 return false;
             if (hi == null)
@@ -2536,7 +2537,7 @@ public class ConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
          * Returns lowest node. This node might not be in range, so
          * most usages need to check bounds
          */
-        private ConcurrentSkipListMap.Node<K,V> loNode() {
+        private HConcurrentSkipListMap.Node<K,V> loNode() {
             if (lo == null)
                 return m.findFirst();
             else if (loInclusive)
@@ -2549,7 +2550,7 @@ public class ConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
          * Returns highest node. This node might not be in range, so
          * most usages need to check bounds
          */
-        private ConcurrentSkipListMap.Node<K,V> hiNode() {
+        private HConcurrentSkipListMap.Node<K,V> hiNode() {
             if (hi == null)
                 return m.findLast();
             else if (hiInclusive)
@@ -2562,7 +2563,7 @@ public class ConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
          * Returns lowest absolute key (ignoring directonality)
          */
         private K lowestKey() {
-            ConcurrentSkipListMap.Node<K,V> n = loNode();
+            HConcurrentSkipListMap.Node<K,V> n = loNode();
             if (isBeforeEnd(n))
                 return n.key;
             else
@@ -2573,7 +2574,7 @@ public class ConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
          * Returns highest absolute key (ignoring directonality)
          */
         private K highestKey() {
-            ConcurrentSkipListMap.Node<K,V> n = hiNode();
+            HConcurrentSkipListMap.Node<K,V> n = hiNode();
             if (n != null) {
                 K last = n.key;
                 if (inBounds(last))
@@ -2584,7 +2585,7 @@ public class ConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
 
         private Map.Entry<K,V> lowestEntry() {
             for (;;) {
-                ConcurrentSkipListMap.Node<K,V> n = loNode();
+                HConcurrentSkipListMap.Node<K,V> n = loNode();
                 if (!isBeforeEnd(n))
                     return null;
                 Map.Entry<K,V> e = n.createSnapshot();
@@ -2595,7 +2596,7 @@ public class ConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
 
         private Map.Entry<K,V> highestEntry() {
             for (;;) {
-                ConcurrentSkipListMap.Node<K,V> n = hiNode();
+                HConcurrentSkipListMap.Node<K,V> n = hiNode();
                 if (n == null || !inBounds(n.key))
                     return null;
                 Map.Entry<K,V> e = n.createSnapshot();
@@ -2667,7 +2668,7 @@ public class ConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
             }
             if (tooLow(key)) {
                 if ((rel & LT) == 0) {
-                    ConcurrentSkipListMap.Node<K,V> n = loNode();
+                    HConcurrentSkipListMap.Node<K,V> n = loNode();
                     if (isBeforeEnd(n))
                         return n.key;
                 }
@@ -2675,7 +2676,7 @@ public class ConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
             }
             if (tooHigh(key)) {
                 if ((rel & LT) != 0) {
-                    ConcurrentSkipListMap.Node<K,V> n = hiNode();
+                    HConcurrentSkipListMap.Node<K,V> n = hiNode();
                     if (n != null) {
                         K last = n.key;
                         if (inBounds(last))
@@ -2721,7 +2722,7 @@ public class ConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
 
         public int size() {
             long count = 0;
-            for (ConcurrentSkipListMap.Node<K,V> n = loNode();
+            for (HConcurrentSkipListMap.Node<K,V> n = loNode();
                  isBeforeEnd(n);
                  n = n.next) {
                 if (n.getValidValue() != null)
@@ -2737,7 +2738,7 @@ public class ConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
         public boolean containsValue(Object value) {
             if (value == null)
                 throw new NullPointerException();
-            for (ConcurrentSkipListMap.Node<K,V> n = loNode();
+            for (HConcurrentSkipListMap.Node<K,V> n = loNode();
                  isBeforeEnd(n);
                  n = n.next) {
                 V v = n.getValidValue();
@@ -2748,7 +2749,7 @@ public class ConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
         }
 
         public void clear() {
-            for (ConcurrentSkipListMap.Node<K,V> n = loNode();
+            for (HConcurrentSkipListMap.Node<K,V> n = loNode();
                  isBeforeEnd(n);
                  n = n.next) {
                 if (n.getValidValue() != null)
@@ -3081,7 +3082,7 @@ public class ConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
     static {
         try {
             UNSAFE = sun.misc.Unsafe.getUnsafe();
-            Class<?> k = ConcurrentSkipListMap.class;
+            Class<?> k = HConcurrentSkipListMap.class;
             headOffset = UNSAFE.objectFieldOffset
                 (k.getDeclaredField("head"));
         } catch (Exception e) {

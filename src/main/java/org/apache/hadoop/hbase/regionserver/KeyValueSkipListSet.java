@@ -20,6 +20,7 @@
 package org.apache.hadoop.hbase.regionserver;
 
 import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.util.HConcurrentSkipListMap;
 
 import java.util.Collection;
 import java.util.Comparator;
@@ -47,7 +48,7 @@ class KeyValueSkipListSet implements NavigableSet<KeyValue> {
   private final ConcurrentNavigableMap<KeyValue, KeyValue> delegatee;
 
   KeyValueSkipListSet(final KeyValue.KVComparator c) {
-    this.delegatee = new ConcurrentSkipListMap<KeyValue, KeyValue>(c);
+    this.delegatee = new HConcurrentSkipListMap<KeyValue, KeyValue>(c);
   }
 
   KeyValueSkipListSet(final ConcurrentNavigableMap<KeyValue, KeyValue> m) {
