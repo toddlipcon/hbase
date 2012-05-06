@@ -930,6 +930,19 @@ public class Bytes {
   throws IOException {
     byte firstByte = buffer[offset];
     int len = WritableUtils.decodeVIntSize(firstByte);
+    return readVLong(buffer, offset, len);
+  }
+  
+  /**
+   * The same as {@link #readVLong(byte[], int)} except it can be used when
+   * the length of the vint is already known (eg by virtue of having already
+   * called {@link WritableUtils#decodeVIntSize(byte)}.
+   */
+  public static long readVLong(final byte [] buffer, final int offset, final int knownSize)
+  throws IOException {
+    byte firstByte = buffer[offset];
+    int len = knownSize;
+
     if (len == 1) {
       return firstByte;
     }

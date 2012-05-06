@@ -750,18 +750,17 @@ public class HFileReaderV2 extends AbstractHFileReader {
     }
 
     private final void readKeyValueLen() {
-      blockBuffer.mark();
-      currKeyLen = blockBuffer.getInt();
-      currValueLen = blockBuffer.getInt();
-      blockBuffer.reset();
+      byte[] blockBufferArray = blockBuffer.array();
+      int arrayOffset = blockBuffer.arrayOffset() + blockBuffer.position();
+      currKeyLen = Bytes.toInt(blockBuffer.array(), arrayOffset);
+      currValueLen = Bytes.toInt(blockBuffer.array(), arrayOffset + Bytes.SIZEOF_INT);
+
       if (this.reader.shouldIncludeMemstoreTS()) {
         try {
-          int memstoreTSOffset = blockBuffer.arrayOffset()
-              + blockBuffer.position() + KEY_VALUE_LEN_SIZE + currKeyLen
+          int memstoreTSOffset = arrayOffset + KEY_VALUE_LEN_SIZE + currKeyLen
               + currValueLen;
-          currMemstoreTS = Bytes.readVLong(blockBuffer.array(),
-              memstoreTSOffset);
-          currMemstoreTSLen = WritableUtils.getVIntSize(currMemstoreTS);
+          currMemstoreTSLen = WritableUtils.decodeVIntSize(blockBufferArray[memstoreTSOffset]);
+          currMemstoreTS = Bytes.readVLong(blockBufferArray, memstoreTSOffset, currMemstoreTSLen);
         } catch (Exception e) {
           throw new RuntimeException("Error reading memstore timestamp", e);
         }
@@ -796,25 +795,23 @@ public class HFileReaderV2 extends AbstractHFileReader {
       long memstoreTS = 0;
       int memstoreTSLen = 0;
       int lastKeyValueSize = -1;
+      byte[] blockBufferArray = blockBuffer.array();
+
       do {
-        blockBuffer.mark();
-        klen = blockBuffer.getInt();
-        vlen = blockBuffer.getInt();
-        blockBuffer.reset();
+        int arrayOffset = blockBuffer.position() + blockBuffer.arrayOffset();
+        int keyOffset = arrayOffset + KEY_VALUE_LEN_SIZE;
+        klen = Bytes.toInt(blockBufferArray, arrayOffset);
+        vlen = Bytes.toInt(blockBufferArray, arrayOffset + 4);
         if (this.reader.shouldIncludeMemstoreTS()) {
           try {
-            int memstoreTSOffset = blockBuffer.arrayOffset()
-                + blockBuffer.position() + KEY_VALUE_LEN_SIZE + klen + vlen;
-            memstoreTS = Bytes.readVLong(blockBuffer.array(),
-                memstoreTSOffset);
-            memstoreTSLen = WritableUtils.getVIntSize(memstoreTS);
+            int memstoreTSOffset = keyOffset + klen + vlen;
+            memstoreTSLen = WritableUtils.decodeVIntSize(blockBufferArray[memstoreTSOffset]);
+            memstoreTS = Bytes.readVLong(blockBufferArray, memstoreTSOffset, memstoreTSLen);
           } catch (Exception e) {
             throw new RuntimeException("Error reading memstore timestamp", e);
           }
         }
 
-        int keyOffset = blockBuffer.arrayOffset() + blockBuffer.position()
-            + KEY_VALUE_LEN_SIZE;
         int comp = reader.getComparator().compare(key, offset, length,
             blockBuffer.array(), keyOffset, klen);
 
