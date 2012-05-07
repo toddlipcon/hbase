@@ -35,6 +35,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.ClassSize;
 import org.apache.hadoop.io.RawComparator;
 import org.apache.hadoop.io.Writable;
+import org.apache.hadoop.thirdparty.guava.common.primitives.Ints;
 
 import com.google.common.primitives.Longs;
 
@@ -213,11 +214,17 @@ public class KeyValue implements Writable, HeapSize {
     new KeyValue(HConstants.EMPTY_BYTE_ARRAY, HConstants.LATEST_TIMESTAMP);
 
   private byte [] bytes = null;
+  private long keyPrefix;
   private int offset = 0;
   private int length = 0;
 
   // the row cached
   private volatile byte [] rowCache = null;
+  
+  // default value is 0, aka DNC
+  private long memstoreTS = 0;
+
+
 
   /**
    * @return True if a delete type, a {@link KeyValue.Type#Delete} or
@@ -238,10 +245,6 @@ public class KeyValue implements Writable, HeapSize {
   public void setMemstoreTS(long memstoreTS) {
     this.memstoreTS = memstoreTS;
   }
-
-  // default value is 0, aka DNC
-  private long memstoreTS = 0;
-
   /** Dragon time over, return to normal business */
 
 
@@ -279,6 +282,7 @@ public class KeyValue implements Writable, HeapSize {
     this.bytes = bytes;
     this.offset = offset;
     this.length = length;
+    computeKeyPrefix();
   }
 
   /** Constructors that build a new backing byte array from fields */
@@ -423,6 +427,24 @@ public class KeyValue implements Writable, HeapSize {
         timestamp, type, value, voffset, vlength);
     this.length = bytes.length;
     this.offset = 0;
+    computeKeyPrefix();
+  }
+
+  private void computeKeyPrefix() {
+    int keyOffset = getKeyOffset();
+    int rowLength = Bytes.toShort(this.bytes, keyOffset);
+
+    int prefixLength = rowLength + Bytes.SIZEOF_SHORT;
+    if (prefixLength >= 8) {
+      keyPrefix = Bytes.toLong(bytes, keyOffset);
+    } else {
+      keyPrefix = 0;
+      for (int i = 0; i < prefixLength; i++) {
+        keyPrefix |= (bytes[keyOffset + i] & 0xff);
+        keyPrefix <<= 8;
+      }
+      keyPrefix <<= 64 - ((prefixLength + 1) << 3);
+    }
   }
 
   /**
@@ -448,6 +470,7 @@ public class KeyValue implements Writable, HeapSize {
         timestamp, type, vlength);
     this.length = bytes.length;
     this.offset = 0;
+    computeKeyPrefix();
   }
 
   /**
@@ -853,7 +876,10 @@ public class KeyValue implements Writable, HeapSize {
    * @return Row length
    */
   public short getRowLength() {
-    return Bytes.toShort(this.bytes, getKeyOffset());
+    /*if (LOG.isTraceEnabled()) {
+      LOG.trace(String.format("key prefix: %016x", keyPrefix));
+    }*/
+    return (short) (this.keyPrefix >>> 48);
   }
 
   /**
@@ -1495,7 +1521,8 @@ public class KeyValue implements Writable, HeapSize {
     public KeyComparator getRawComparator() {
       return this.rawcomparator;
     }
-
+    
+    
     @Override
     protected Object clone() throws CloneNotSupportedException {
       return new MetaComparator();
@@ -1518,12 +1545,49 @@ public class KeyValue implements Writable, HeapSize {
     public KeyComparator getRawComparator() {
       return this.rawcomparator;
     }
+    
+    private int compareRowPrefixes(KeyValue left, KeyValue right) {
+      int ret = Longs.compare(
+          left.keyPrefix  & 0x0000ffffffffffffL,
+          right.keyPrefix & 0x0000ffffffffffffL);
+
+      if (ret == 0) {
+        int lRowLen = left.getRowLength();
+        if (lRowLen <= 6) {
+          int rRowLen = right.getRowLength();
+          if (rRowLen <= 6) {
+            // They either have the same row, or one row is a prefix of
+            // the other and the other one has 00s
+            ret = Ints.compare(lRowLen, rRowLen);
+          }          
+        }
+      }
+      /*
+      if (LOG.isTraceEnabled()) { 
+        LOG.trace(
+            String.format(
+                "compared %016x and %016x, ret=%d",
+                left.keyPrefix, right.keyPrefix, 
+                ret));
+      }*/
+      return ret;
+    }
 
     public int compare(final KeyValue left, final KeyValue right) {
-      int ret = getRawComparator().compare(left.getBuffer(),
-          left.getOffset() + ROW_OFFSET, left.getKeyLength(),
+      int ret = 0;
+      if (this.getClass() == KVComparator.class) {
+        ret = compareRowPrefixes(left, right);
+        if (ret != 0) return ret;
+        // TODO: In the equality case, we could skip some or all of the row comparison
+        // as well. But the equal-row case is rare unless rows are very wide.
+      }
+      int lkeyLen = left.getKeyLength();
+      int rkeyLen = right.getKeyLength();
+      ret = getRawComparator().compare(left.getBuffer(),
+          left.getOffset() + ROW_OFFSET, lkeyLen,
           right.getBuffer(), right.getOffset() + ROW_OFFSET,
-          right.getKeyLength());
+          rkeyLen);
+
       if (ret != 0) return ret;
       // Negate this comparison so later edits show up first
       return -Longs.compare(left.getMemstoreTS(), right.getMemstoreTS());
@@ -1970,6 +2034,8 @@ public class KeyValue implements Writable, HeapSize {
    * table.
    */
   public static class MetaKeyComparator extends KeyComparator {
+    
+    
     public int compareRows(byte [] left, int loffset, int llength,
         byte [] right, int roffset, int rlength) {
       //        LOG.info("META " + Bytes.toString(left, loffset, llength) +
@@ -2237,6 +2303,7 @@ public class KeyValue implements Writable, HeapSize {
     this.offset = 0;
     this.bytes = new byte[this.length];
     in.readFully(this.bytes, 0, this.length);
+    computeKeyPrefix();
   }
 
   // Writable

@@ -25,6 +25,7 @@ import org.apache.hadoop.hbase.util.HConcurrentSkipListMap;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.Iterator;
+import java.util.NavigableMap;
 import java.util.NavigableSet;
 import java.util.SortedSet;
 import java.util.concurrent.ConcurrentNavigableMap;
@@ -45,13 +46,13 @@ import java.util.concurrent.ConcurrentSkipListMap;
  * get and set and won't throw ConcurrentModificationException when iterating.
  */
 class KeyValueSkipListSet implements NavigableSet<KeyValue> {
-  private final ConcurrentNavigableMap<KeyValue, KeyValue> delegatee;
+  private final NavigableMap<KeyValue, KeyValue> delegatee;
 
   KeyValueSkipListSet(final KeyValue.KVComparator c) {
     this.delegatee = new HConcurrentSkipListMap<KeyValue, KeyValue>(c);
   }
 
-  KeyValueSkipListSet(final ConcurrentNavigableMap<KeyValue, KeyValue> m) {
+  KeyValueSkipListSet(final NavigableMap<KeyValue, KeyValue> m) {
     this.delegatee = m;
   }
 
@@ -134,7 +135,11 @@ class KeyValueSkipListSet implements NavigableSet<KeyValue> {
   }
 
   public boolean addAll(Collection<? extends KeyValue> c) {
-    throw new UnsupportedOperationException("Not implemented");
+    boolean changed = false;
+    for (KeyValue kv : c) {
+      changed |= add(kv);
+    }
+    return changed;
   }
 
   public void clear() {

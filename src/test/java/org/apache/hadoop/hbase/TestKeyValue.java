@@ -29,17 +29,23 @@ import junit.framework.TestCase;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.commons.logging.impl.Log4JLogger;
 import org.apache.hadoop.hbase.KeyValue.KVComparator;
 import org.apache.hadoop.hbase.KeyValue.MetaComparator;
 import org.apache.hadoop.hbase.KeyValue.Type;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.io.WritableUtils;
+import org.apache.log4j.Level;
+import org.apache.velocity.runtime.log.Log4JLogChute;
 import org.junit.experimental.categories.Category;
 
 @Category(SmallTests.class)
 public class TestKeyValue extends TestCase {
   private final Log LOG = LogFactory.getLog(this.getClass().getName());
 
+  static {
+    ((Log4JLogger)KeyValue.LOG).getLogger().setLevel(Level.TRACE);
+  }
   public void testColumnCompare() throws Exception {
     final byte [] a = Bytes.toBytes("aaa");
     byte [] family1 = Bytes.toBytes("abc");
@@ -168,6 +174,38 @@ public class TestKeyValue extends TestCase {
     comparisons(new KeyValue.KVComparator());
     metacomparisons(new KeyValue.RootComparator());
     metacomparisons(new KeyValue.MetaComparator());
+  }
+  
+  public void testBadCaseFromYcsb() {
+    // key=\x00\x0Duser789848321\x04testfield3\x00\x00\x017%\x97\xAAe\x04
+    KeyValue k1 = new KeyValue(
+        Bytes.toBytes("user789848321"), // row
+        Bytes.toBytes("test"), // cf
+        Bytes.toBytes("testfield3"), // qual
+        Bytes.toBytes("xxxval"));
+    
+    // lastkey=\x00\x0Cuser78998443\x04testfield9\x00\x00\x017%\x96\xBBK\x04
+    KeyValue k2 = new KeyValue(
+        Bytes.toBytes("user78998443"), // row
+        Bytes.toBytes("test"), // cf
+        Bytes.toBytes("testfield9"), // qual
+        Bytes.toBytes("xxxval"));
+
+    assertEquals(-1, KeyValue.COMPARATOR.compare(k1, k2));
+    
+    
+    k1 = new KeyValue(
+        Bytes.toBytes("user789848"), // row
+        Bytes.toBytes("test"), // cf
+        Bytes.toBytes("testfield3"), // qual
+        Bytes.toBytes("xxxval"));
+    
+    k2 = new KeyValue(
+        Bytes.toBytes("user7899"), // row
+        Bytes.toBytes("test"), // cf
+        Bytes.toBytes("testfield9"), // qual
+        Bytes.toBytes("xxxval"));
+    assertEquals(-1, KeyValue.COMPARATOR.compare(k1, k2));
   }
 
   public void testBadMetaCompareSingleDelim() {

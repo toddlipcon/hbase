@@ -1019,7 +1019,7 @@
     <buildDate>
       ${maven.build.timestamp}
     </buildDate>
-    <compileSource>1.7</compileSource>
+    <compileSource>1.6</compileSource>
 
     <!-- Dependencies -->
     <avro.version>1.5.3</avro.version>

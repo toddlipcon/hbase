@@ -11,6 +11,10 @@ import java.security.PrivilegedAction;
 import java.util.*;
 import java.util.concurrent.ConcurrentNavigableMap;
 
+import org.apache.hadoop.thirdparty.guava.common.base.Preconditions;
+
+import com.google.common.collect.Ordering;
+
 /**
  * A scalable concurrent {@link ConcurrentNavigableMap} implementation.
  * The map is sorted according to the {@linkplain Comparable natural
@@ -1299,15 +1303,6 @@ public class HConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
     /* ---------------- Constructors -------------- */
 
     /**
-     * Constructs a new, empty map, sorted according to the
-     * {@linkplain Comparable natural ordering} of the keys.
-     */
-    public HConcurrentSkipListMap() {
-        this.comparator = null;
-        initialize();
-    }
-
-    /**
      * Constructs a new, empty map, sorted according to the specified
      * comparator.
      *
@@ -1321,23 +1316,6 @@ public class HConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
     }
 
     /**
-     * Constructs a new map containing the same mappings as the given map,
-     * sorted according to the {@linkplain Comparable natural ordering} of
-     * the keys.
-     *
-     * @param  m the map whose mappings are to be placed in this map
-     * @throws ClassCastException if the keys in <tt>m</tt> are not
-     *         {@link Comparable}, or are not mutually comparable
-     * @throws NullPointerException if the specified map or any of its keys
-     *         or values are null
-     */
-    public HConcurrentSkipListMap(Map<? extends K, ? extends V> m) {
-        this.comparator = null;
-        initialize();
-        putAll(m);
-    }
-
-    /**
      * Constructs a new map containing the same mappings and using the
      * same ordering as the specified sorted map.
      *
@@ -1348,6 +1326,8 @@ public class HConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
      */
     public HConcurrentSkipListMap(SortedMap<K, ? extends V> m) {
         this.comparator = m.comparator();
+        Preconditions.checkArgument(comparator != null,
+            "Must have a comparator");
         initialize();
         buildFromSorted(m);
     }
