@@ -5,6 +5,9 @@
  */
 
 package org.apache.hadoop.hbase.util;
+import java.lang.reflect.Field;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.*;
 import java.util.concurrent.ConcurrentNavigableMap;
 
@@ -487,7 +490,7 @@ public class HConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
 
         static {
             try {
-                UNSAFE = sun.misc.Unsafe.getUnsafe();
+                UNSAFE = HConcurrentSkipListMap.UNSAFE;
                 Class<?> k = Node.class;
                 valueOffset = UNSAFE.objectFieldOffset
                     (k.getDeclaredField("value"));
@@ -563,11 +566,10 @@ public class HConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
         }
 
         // Unsafe mechanics
-        private static final sun.misc.Unsafe UNSAFE;
+        private static final sun.misc.Unsafe UNSAFE = HConcurrentSkipListMap.UNSAFE;
         private static final long rightOffset;
         static {
             try {
-                UNSAFE = sun.misc.Unsafe.getUnsafe();
                 Class<?> k = Index.class;
                 rightOffset = UNSAFE.objectFieldOffset
                     (k.getDeclaredField("right"));
@@ -593,57 +595,12 @@ public class HConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
     /* ---------------- Comparison utilities -------------- */
 
     /**
-     * Represents a key with a comparator as a Comparable.
-     *
-     * Because most sorted collections seem to use natural ordering on
-     * Comparables (Strings, Integers, etc), most internal methods are
-     * geared to use them. This is generally faster than checking
-     * per-comparison whether to use comparator or comparable because
-     * it doesn't require a (Comparable) cast for each comparison.
-     * (Optimizers can only sometimes remove such redundant checks
-     * themselves.) When Comparators are used,
-     * ComparableUsingComparators are created so that they act in the
-     * same way as natural orderings. This penalizes use of
-     * Comparators vs Comparables, which seems like the right
-     * tradeoff.
-     */
-    static final class ComparableUsingComparator<K> implements Comparable<K> {
-        final K actualKey;
-        final Comparator<? super K> cmp;
-        ComparableUsingComparator(K key, Comparator<? super K> cmp) {
-            this.actualKey = key;
-            this.cmp = cmp;
-        }
-        public int compareTo(K k2) {
-            return cmp.compare(actualKey, k2);
-        }
-    }
-
-    /**
-     * If using comparator, return a ComparableUsingComparator, else
-     * cast key as Comparable, which may cause ClassCastException,
-     * which is propagated back to caller.
-     */
-    private Comparable<? super K> comparable(Object key)
-            throws ClassCastException {
-        if (key == null)
-            throw new NullPointerException();
-        if (comparator != null)
-            return new ComparableUsingComparator<K>((K)key, comparator);
-        else
-            return (Comparable<? super K>)key;
-    }
-
-    /**
      * Compares using comparator or natural ordering. Used when the
      * ComparableUsingComparator approach doesn't apply.
      */
     int compare(K k1, K k2) throws ClassCastException {
         Comparator<? super K> cmp = comparator;
-        if (cmp != null)
-            return cmp.compare(k1, k2);
-        else
-            return ((Comparable<? super K>)k1).compareTo(k2);
+        return cmp.compare(k1, k2);
     }
 
     /**
@@ -679,7 +636,7 @@ public class HConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
      * @param key the key
      * @return a predecessor of key
      */
-    private Node<K,V> findPredecessor(Comparable<? super K> key) {
+    private Node<K,V> findPredecessor(K key) {
         if (key == null)
             throw new NullPointerException(); // don't postpone errors
         for (;;) {
@@ -695,7 +652,7 @@ public class HConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
                         r = q.right;         // reread r
                         continue;
                     }
-                    if (key.compareTo(k) > 0) {
+                    if (comparator.compare(key, k) > 0) {
                         q = r;
                         r = r.right;
                         continue;
@@ -755,7 +712,7 @@ public class HConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
      * @param key the key
      * @return node holding key, or null if no such
      */
-    private Node<K,V> findNode(Comparable<? super K> key) {
+    private Node<K,V> findNode(K key) {
         for (;;) {
             Node<K,V> b = findPredecessor(key);
             Node<K,V> n = b.next;
@@ -772,7 +729,7 @@ public class HConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
                 }
                 if (v == n || b.value == null)  // b is deleted
                     break;
-                int c = key.compareTo(n.key);
+                int c = comparator.compare(key, n.key);
                 if (c == 0)
                     return n;
                 if (c < 0)
@@ -788,15 +745,14 @@ public class HConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
      * @param okey the key
      * @return the value, or null if absent
      */
-    private V doGet(Object okey) {
-        Comparable<? super K> key = comparable(okey);
+    private V doGet(K okey) {
         /*
          * Loop needed here and elsewhere in case value field goes
          * null just as it is about to be returned, in which case we
          * lost a race with a deletion, so must retry.
          */
         for (;;) {
-            Node<K,V> n = findNode(key);
+            Node<K,V> n = findNode(okey);
             if (n == null)
                 return null;
             Object v = n.value;
@@ -816,9 +772,8 @@ public class HConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
      * @return the old value, or null if newly inserted
      */
     private V doPut(K kkey, V value, boolean onlyIfAbsent) {
-        Comparable<? super K> key = comparable(kkey);
         for (;;) {
-            Node<K,V> b = findPredecessor(key);
+            Node<K,V> b = findPredecessor(kkey);
             Node<K,V> n = b.next;
             for (;;) {
                 if (n != null) {
@@ -832,7 +787,7 @@ public class HConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
                     }
                     if (v == n || b.value == null) // b is deleted
                         break;
-                    int c = key.compareTo(n.key);
+                    int c = comparator.compare(kkey, n.key);
                     if (c > 0) {
                         b = n;
                         n = f;
@@ -941,7 +896,7 @@ public class HConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
     private void addIndex(Index<K,V> idx, HeadIndex<K,V> h, int indexLevel) {
         // Track next level to insert in case of retries
         int insertionLevel = indexLevel;
-        Comparable<? super K> key = comparable(idx.node.key);
+        K key = idx.node.key;
         if (key == null) throw new NullPointerException();
 
         // Similar to findPredecessor, but adding index nodes along
@@ -955,7 +910,7 @@ public class HConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
                 if (r != null) {
                     Node<K,V> n = r.node;
                     // compare before deletion check avoids needing recheck
-                    int c = key.compareTo(n.key);
+                    int c = comparator.compare(key, n.key);
                     if (n.value == null) {
                         if (!q.unlink(r))
                             break;
@@ -1014,8 +969,7 @@ public class HConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
      * associated with key
      * @return the node, or null if not found
      */
-    final V doRemove(Object okey, Object value) {
-        Comparable<? super K> key = comparable(okey);
+    final V doRemove(K key, Object value) {
         for (;;) {
             Node<K,V> b = findPredecessor(key);
             Node<K,V> n = b.next;
@@ -1032,7 +986,7 @@ public class HConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
                 }
                 if (v == n || b.value == null)      // b is deleted
                     break;
-                int c = key.compareTo(n.key);
+                int c = comparator.compare(key, n.key);
                 if (c < 0)
                     return null;
                 if (c > 0) {
@@ -1269,11 +1223,10 @@ public class HConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
                 if (!n.casValue(v, null))
                     break;
                 K key = n.key;
-                Comparable<? super K> ck = comparable(key);
                 if (!n.appendMarker(f) || !b.casNext(n, f))
-                    findNode(ck);                  // Retry via findNode
+                    findNode(key);                  // Retry via findNode
                 else {
-                    findPredecessor(ck);           // Clean index
+                    findPredecessor(key);           // Clean index
                     if (head.right == null)
                         tryReduceLevel();
                 }
@@ -1296,8 +1249,7 @@ public class HConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
      * @param rel the relation -- OR'ed combination of EQ, LT, GT
      * @return nearest node fitting relation, or null if no such
      */
-    Node<K,V> findNear(K kkey, int rel) {
-        Comparable<? super K> key = comparable(kkey);
+    Node<K,V> findNear(K key, int rel) {
         for (;;) {
             Node<K,V> b = findPredecessor(key);
             Node<K,V> n = b.next;
@@ -1314,7 +1266,7 @@ public class HConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
                 }
                 if (v == n || b.value == null)    // b is deleted
                     break;
-                int c = key.compareTo(n.key);
+                int c = comparator.compare(key, n.key);
                 if ((c == 0 && (rel & EQ) != 0) ||
                     (c <  0 && (rel & LT) == 0))
                     return n;
@@ -1578,7 +1530,7 @@ public class HConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
      * @throws NullPointerException if the specified key is null
      */
     public boolean containsKey(Object key) {
-        return doGet(key) != null;
+        return doGet((K)key) != null;
     }
 
     /**
@@ -1596,7 +1548,7 @@ public class HConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
      * @throws NullPointerException if the specified key is null
      */
     public V get(Object key) {
-        return doGet(key);
+        return doGet((K)key);
     }
 
     /**
@@ -1629,7 +1581,7 @@ public class HConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
      * @throws NullPointerException if the specified key is null
      */
     public V remove(Object key) {
-        return doRemove(key, null);
+        return doRemove((K)key, null);
     }
 
     /**
@@ -1866,7 +1818,7 @@ public class HConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
             throw new NullPointerException();
         if (value == null)
             return false;
-        return doRemove(key, value) != null;
+        return doRemove((K)key, value) != null;
     }
 
     /**
@@ -1879,9 +1831,8 @@ public class HConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
     public boolean replace(K key, V oldValue, V newValue) {
         if (oldValue == null || newValue == null)
             throw new NullPointerException();
-        Comparable<? super K> k = comparable(key);
         for (;;) {
-            Node<K,V> n = findNode(k);
+            Node<K,V> n = findNode(key);
             if (n == null)
                 return false;
             Object v = n.value;
@@ -1906,9 +1857,8 @@ public class HConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
     public V replace(K key, V value) {
         if (value == null)
             throw new NullPointerException();
-        Comparable<? super K> k = comparable(key);
         for (;;) {
-            Node<K,V> n = findNode(k);
+            Node<K,V> n = findNode(key);
             if (n == null)
                 return null;
             Object v = n.value;
@@ -3081,7 +3031,24 @@ public class HConcurrentSkipListMap<K,V> extends AbstractMap<K,V>
     private static final long headOffset;
     static {
         try {
-            UNSAFE = sun.misc.Unsafe.getUnsafe();
+          UNSAFE = (sun.misc.Unsafe) AccessController.doPrivileged(
+              new PrivilegedAction<Object>() {
+                @Override
+                public Object run() {
+                  try {
+                    Field f = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
+                    f.setAccessible(true);
+                    return f.get(null);
+                  } catch (NoSuchFieldException e) {
+                    // It doesn't matter what we throw;
+                    // it's swallowed in getBestComparer().
+                    throw new Error();
+                  } catch (IllegalAccessException e) {
+                    throw new Error();
+                  }
+                }
+              });
+
             Class<?> k = HConcurrentSkipListMap.class;
             headOffset = UNSAFE.objectFieldOffset
                 (k.getDeclaredField("head"));
