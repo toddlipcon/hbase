@@ -25,11 +25,14 @@ import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValue.SamePrefixComparator;
 import org.apache.hadoop.hbase.io.hfile.BlockType;
+import org.apache.hadoop.hbase.io.hfile.HFile;
+import org.apache.hadoop.hbase.io.hfile.HFileReaderV1;
 import org.apache.hadoop.hbase.io.hfile.Compression.Algorithm;
 import org.apache.hadoop.hbase.util.ByteBufferUtils;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.io.RawComparator;
 import org.apache.hadoop.io.WritableUtils;
+import org.mortbay.log.Log;
 
 /**
  * Base class for all data block encoders that use a buffer.
@@ -117,6 +120,7 @@ abstract class BufferedDataBlockEncoder implements DataBlockEncoder {
     protected ByteBuffer currentBuffer;
     protected STATE current = createSeekerState(); // always valid
     protected STATE previous = createSeekerState(); // may not be valid
+    protected byte[] kvSharedBuffer = null;
 
     @SuppressWarnings("unchecked")
     public BufferedEncodedSeeker(RawComparator<byte[]> comparator) {
@@ -151,8 +155,10 @@ abstract class BufferedDataBlockEncoder implements DataBlockEncoder {
 
     @Override
     public ByteBuffer getKeyValueBuffer() {
-      ByteBuffer kvBuffer = ByteBuffer.allocate(
-          2 * Bytes.SIZEOF_INT + current.keyLength + current.valueLength);
+      int len = 2 * Bytes.SIZEOF_INT + current.keyLength + current.valueLength;
+      kvSharedBuffer = realloc(kvSharedBuffer, len);
+      
+      ByteBuffer kvBuffer = ByteBuffer.wrap(kvSharedBuffer, 0, len);
       kvBuffer.putInt(current.keyLength);
       kvBuffer.putInt(current.valueLength);
       kvBuffer.put(current.keyBuffer, 0, current.keyLength);
@@ -160,6 +166,12 @@ abstract class BufferedDataBlockEncoder implements DataBlockEncoder {
           currentBuffer.arrayOffset() + current.valueOffset,
           current.valueLength);
       return kvBuffer;
+    }
+
+    private static byte[] realloc(byte[] buf, int len) {
+      if (buf != null && buf.length >= len)
+        return buf;
+      return new byte[len];
     }
 
     @Override

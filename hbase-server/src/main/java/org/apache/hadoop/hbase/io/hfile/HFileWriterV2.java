@@ -315,6 +315,8 @@ public class HFileWriterV2 extends AbstractHFileWriter {
   private void append(final long memstoreTS, final byte[] key, final int koffset, final int klength,
       final byte[] value, final int voffset, final int vlength)
       throws IOException {
+    assert lastKeyBuffer != key;
+    
     boolean dupKey = checkKey(key, koffset, klength);
     checkValue(value, voffset, vlength);
     if (!dupKey) {

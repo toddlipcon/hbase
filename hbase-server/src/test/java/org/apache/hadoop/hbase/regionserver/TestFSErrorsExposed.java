@@ -70,7 +70,7 @@ public class TestFSErrorsExposed {
         "regionname"), "familyname");
     HFileSystem hfs = (HFileSystem)util.getTestFileSystem();
     FaultyFileSystem faultyfs = new FaultyFileSystem(hfs.getBackingFs());
-    FileSystem fs = new HFileSystem(faultyfs);
+    FileSystem fs = new HFileSystem(faultyfs, false);
     CacheConfig cacheConf = new CacheConfig(util.getConfiguration());
     StoreFile.Writer writer = new StoreFile.WriterBuilder(
         util.getConfiguration(), cacheConf, hfs, 2*1024)
@@ -119,7 +119,7 @@ public class TestFSErrorsExposed {
         "regionname"), "familyname");
     HFileSystem hfs = (HFileSystem)util.getTestFileSystem();
     FaultyFileSystem faultyfs = new FaultyFileSystem(hfs.getBackingFs());
-    HFileSystem fs = new HFileSystem(faultyfs);
+    HFileSystem fs = new HFileSystem(faultyfs, false);
     CacheConfig cacheConf = new CacheConfig(util.getConfiguration());
     StoreFile.Writer writer = new StoreFile.WriterBuilder(
         util.getConfiguration(), cacheConf, hfs, 2 * 1024)

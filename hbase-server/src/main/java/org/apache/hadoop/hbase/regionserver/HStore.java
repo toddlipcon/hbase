@@ -911,7 +911,7 @@ public class HStore extends SchemaConfigured implements Store {
    * the line).
    * @return all scanners for this store
    */
-  protected List<KeyValueScanner> getScanners(boolean cacheBlocks,
+  public List<KeyValueScanner> getScanners(boolean cacheBlocks,
       boolean isGet,
       boolean isCompaction,
       ScanQueryMatcher matcher) throws IOException {

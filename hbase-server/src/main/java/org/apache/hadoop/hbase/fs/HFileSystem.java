@@ -84,13 +84,14 @@ public class HFileSystem extends FilterFileSystem {
     // filesystem object that has cksum verification turned off.
     // We will avoid verifying checksums in the fs client, instead do it
     // inside of hbase.
-    // If this is the local file system hadoop has a bug where seeks
-    // do not go to the correct location if setVerifyChecksum(false) is called.
-    // This manifests itself in that incorrect data is read and HFileBlocks won't be able to read
-    // their header magic numbers. See HBASE-5885
-    if (useHBaseChecksum && !(fs instanceof LocalFileSystem)) {
-      this.noChecksumFs = newInstanceFileSystem(conf);
-      this.noChecksumFs.setVerifyChecksum(false);
+    if (useHBaseChecksum) {
+      if (fs instanceof LocalFileSystem) {
+        this.noChecksumFs = ((LocalFileSystem) fs).getRaw();
+      } else {
+        this.noChecksumFs = newInstanceFileSystem(conf,
+            fs.getUri());
+        this.noChecksumFs.setVerifyChecksum(false);
+      }
     } else {
       this.noChecksumFs = fs;
     }
@@ -102,11 +103,23 @@ public class HFileSystem extends FilterFileSystem {
    * writefs are both set to be the same specified fs. 
    * Do not verify hbase-checksums while reading data from filesystem.
    * @param fs Set the noChecksumFs and writeFs to this specified filesystem.
+   * @throws IOException 
    */
-  public HFileSystem(FileSystem fs) {
+  public HFileSystem(FileSystem fs, boolean useHBaseChecksum) throws IOException {
     this.fs = fs;
-    this.noChecksumFs = fs;
-    this.useHBaseChecksum = false;
+    this.noChecksumFs = createNoChecksumFs(fs);
+    this.useHBaseChecksum = useHBaseChecksum;
+  }
+
+  private FileSystem createNoChecksumFs(FileSystem fs) throws IOException {
+    if (fs instanceof LocalFileSystem) {
+      return ((LocalFileSystem) fs).getRaw();
+    } else {
+      FileSystem fs2 = newInstanceFileSystem(fs.getConf(),
+          fs.getUri());
+      fs2.setVerifyChecksum(false);
+      return fs2;
+    }
   }
 
   /**
@@ -156,9 +169,9 @@ public class HFileSystem extends FilterFileSystem {
    * @param conf Configuration
    * @return A new instance of the filesystem
    */
-  private static FileSystem newInstanceFileSystem(Configuration conf)
+  private static FileSystem newInstanceFileSystem(Configuration conf,
+      URI uri)
     throws IOException {
-    URI uri = FileSystem.getDefaultUri(conf);
     FileSystem fs = null;
     Class<?> clazz = conf.getClass("fs." + uri.getScheme() + ".impl", null);
     if (clazz != null) {
@@ -357,7 +370,7 @@ public class HFileSystem extends FilterFileSystem {
    * Wrap a LocalFileSystem within a HFileSystem.
    */
   static public FileSystem getLocalFs(Configuration conf) throws IOException {
-    return new HFileSystem(FileSystem.getLocal(conf));
+    return new HFileSystem(FileSystem.getLocal(conf), true);
   }
 
   /**

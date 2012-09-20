@@ -163,7 +163,8 @@ public enum DataBlockEncoding {
     }
 
     DataBlockEncoding algorithm = idToEncoding.get(encoderId);
-    return algorithm.getClass().equals(encoder.getClass());
+    DataBlockEncoder expectedEnc = algorithm.getEncoder();
+    return expectedEnc.getClass().equals(encoder.getClass());
   }
 
   public static DataBlockEncoding getEncodingById(short dataBlockEncodingId) {

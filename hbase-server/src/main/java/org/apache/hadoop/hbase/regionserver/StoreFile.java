@@ -18,6 +18,7 @@
  */
 package org.apache.hadoop.hbase.regionserver;
 
+import java.io.Closeable;
 import java.io.DataInput;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -705,7 +706,7 @@ public class StoreFile extends SchemaConfigured {
     private final Configuration conf;
     private final CacheConfig cacheConf;
     private final FileSystem fs;
-    private final int blockSize;
+    private final int hfileBlockSize;
 
     private Compression.Algorithm compressAlgo =
         HFile.DEFAULT_COMPRESSION_ALGORITHM;
@@ -720,11 +721,11 @@ public class StoreFile extends SchemaConfigured {
     private int bytesPerChecksum = HFile.DEFAULT_BYTES_PER_CHECKSUM;
 
     public WriterBuilder(Configuration conf, CacheConfig cacheConf,
-        FileSystem fs, int blockSize) {
+        FileSystem fs, int hfileBlockSize) {
       this.conf = conf;
       this.cacheConf = cacheConf;
       this.fs = fs;
-      this.blockSize = blockSize;
+      this.hfileBlockSize = hfileBlockSize;
     }
 
     /**
@@ -834,7 +835,7 @@ public class StoreFile extends SchemaConfigured {
       if (comparator == null) {
         comparator = KeyValue.COMPARATOR;
       }
-      return new Writer(fs, filePath, blockSize, compressAlgo, dataBlockEncoder,
+      return new Writer(fs, filePath, hfileBlockSize, compressAlgo, dataBlockEncoder,
           conf, cacheConf, comparator, bloomType, maxKeyCount, checksumType,
           bytesPerChecksum);
     }
@@ -928,7 +929,7 @@ public class StoreFile extends SchemaConfigured {
    * A StoreFile writer.  Use this to read/write HBase Store Files. It is package
    * local because it is an implementation detail of the HBase regionserver.
    */
-  public static class Writer {
+  public static class Writer implements Closeable {
     private final BloomFilterWriter generalBloomFilterWriter;
     private final BloomFilterWriter deleteFamilyBloomFilterWriter;
     private final BloomType bloomType;
@@ -963,8 +964,8 @@ public class StoreFile extends SchemaConfigured {
      * Creates an HFile.Writer that also write helpful meta data.
      * @param fs file system to write to
      * @param path file name to create
-     * @param blocksize HDFS block size
-     * @param compress HDFS block compression
+     * @param hfileBlocksize HFile block size
+     * @param compress HFile block compression
      * @param conf user configuration
      * @param comparator key comparator
      * @param bloomType bloom filter setting
@@ -974,7 +975,7 @@ public class StoreFile extends SchemaConfigured {
      * @param bytesPerChecksum the number of bytes per checksum value
      * @throws IOException problem writing to FS
      */
-    private Writer(FileSystem fs, Path path, int blocksize,
+    private Writer(FileSystem fs, Path path, int hfileBlocksize,
         Compression.Algorithm compress,
         HFileDataBlockEncoder dataBlockEncoder, final Configuration conf,
         CacheConfig cacheConf,
@@ -985,7 +986,7 @@ public class StoreFile extends SchemaConfigured {
           dataBlockEncoder : NoOpDataBlockEncoder.INSTANCE;
       writer = HFile.getWriterFactory(conf, cacheConf)
           .withPath(fs, path)
-          .withBlockSize(blocksize)
+          .withBlockSize(hfileBlocksize)
           .withCompression(compress)
           .withDataBlockEncoder(this.dataBlockEncoder)
           .withComparator(comparator.getRawComparator())

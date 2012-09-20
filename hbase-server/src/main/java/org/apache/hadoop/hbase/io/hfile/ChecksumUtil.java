@@ -24,6 +24,7 @@ import java.util.zip.Checksum;
 
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.DataOutputBuffer;
+import org.apache.hadoop.util.DataChecksum;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.ChecksumFactory;
@@ -70,6 +71,7 @@ public class ChecksumUtil {
       return; // No checkums for this block.
     }
 
+
     Checksum checksum = checksumType.getChecksumObject();
     int bytesLeft = endOffset - startOffset;
     int chunkNum = 0;
@@ -100,7 +102,6 @@ public class ChecksumUtil {
    */
   static boolean validateBlockChecksum(Path path, HFileBlock block, 
     byte[] data, int hdrSize) throws IOException {
-
     // If this is an older version of the block that does not have
     // checksums, then return false indicating that checksum verification
     // did not succeed. Actually, this methiod should never be called

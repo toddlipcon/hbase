@@ -578,7 +578,7 @@ public class HFile {
     // In this case, we will not be able to avoid checksumming inside
     // the filesystem.
     if (!(fs instanceof HFileSystem)) {
-      hfs = new HFileSystem(fs);
+      hfs = new HFileSystem(fs, false);
     } else {
       hfs = (HFileSystem)fs;
       // open a stream to read data without checksum verification in

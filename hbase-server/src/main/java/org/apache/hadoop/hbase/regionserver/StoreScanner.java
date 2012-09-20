@@ -38,6 +38,8 @@ import org.apache.hadoop.hbase.regionserver.metrics.SchemaMetrics;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 
+import com.google.common.annotations.VisibleForTesting;
+
 /**
  * Scanner scans both the memstore and the HStore. Coalesce KeyValue stream
  * into List<KeyValue> for a single row.
@@ -180,7 +182,8 @@ public class StoreScanner extends NonLazyKeyValueScanner
   }
 
   /** Constructor for testing. */
-  StoreScanner(final Scan scan, HStore.ScanInfo scanInfo,
+  @VisibleForTesting
+  public StoreScanner(final Scan scan, HStore.ScanInfo scanInfo,
       ScanType scanType, final NavigableSet<byte[]> columns,
       final List<KeyValueScanner> scanners) throws IOException {
     this(scan, scanInfo, scanType, columns, scanners,

@@ -31,7 +31,10 @@ import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
+import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.MediumTests;
+import org.apache.hadoop.hbase.io.encoding.DataBlockEncoding;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.io.SequenceFile;
 import org.apache.hadoop.io.compress.CompressionCodec;
@@ -48,6 +51,7 @@ import org.junit.experimental.categories.Category;
  */
 @Category(MediumTests.class)
 public class TestHFilePerformance extends TestCase {
+  private static final int BLOCK_SIZE = 64 * 1024;
   private static HBaseTestingUtility TEST_UTIL = new HBaseTestingUtility();
   private static String ROOT_DIR =
     TEST_UTIL.getDataTestDir("TestHFilePerformance").toString();
@@ -60,7 +64,7 @@ public class TestHFilePerformance extends TestCase {
   @Override
   public void setUp() throws IOException {
     conf = new Configuration();
-    fs = FileSystem.get(conf);
+    fs = FileSystem.getLocal(conf).getRaw();
     formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
   }
 
@@ -105,26 +109,44 @@ public class TestHFilePerformance extends TestCase {
   //     keys are all random.
 
   private static class KeyValueGenerator {
-    Random keyRandomizer;
-    Random valueRandomizer;
-    long randomValueRatio = 3; // 1 out of randomValueRatio generated values will be random.
-    long valueSequence = 0 ;
-
-
+    byte[] randomValueData = new byte[BLOCK_SIZE * 2];
+    
+    int valueSequence = 0 ;
+    long keySequence = 0;
+    
+    static final float COMPRESSION_RATIO = 0.5f;
+    static final int KEY_SIZE = 100;
+    
     KeyValueGenerator() {
-      keyRandomizer = new Random(0L); //TODO with seed zero
-      valueRandomizer = new Random(1L); //TODO with seed one
+      Random valueRandomizer = new Random(0L); //TODO with seed zero
+      
+      byte[] compressibleChunk = new byte[(int)(KEY_SIZE * COMPRESSION_RATIO)];
+
+      int outPos = 0;
+      while (outPos < randomValueData.length) {
+        valueRandomizer.nextBytes(compressibleChunk);
+        
+        int chunkRem = Math.min(randomValueData.length - outPos, 100);
+        while (chunkRem > 0) {
+          int copyLen = Math.min(chunkRem, compressibleChunk.length);
+          System.arraycopy(compressibleChunk, 0, randomValueData, outPos, copyLen);
+          outPos += copyLen;
+          chunkRem -= copyLen;
+        }
+      }
     }
 
     // Key is always random now.
     void getKey(byte[] key) {
-      keyRandomizer.nextBytes(key);
+      Bytes.putLong(key, key.length - 8, keySequence++);
     }
 
     void getValue(byte[] value) {
-      if (valueSequence % randomValueRatio == 0)
-          valueRandomizer.nextBytes(value);
-      valueSequence++;
+      if (valueSequence + value.length > randomValueData.length) {
+        valueSequence = 0;
+      }
+      System.arraycopy(randomValueData, valueSequence, value, 0, value.length);
+      valueSequence += value.length;
     }
   }
 
@@ -141,7 +163,8 @@ public class TestHFilePerformance extends TestCase {
    */
    //TODO writeMethod: implement multiple ways of writing e.g. A) known length (no chunk) B) using a buffer and streaming (for many chunks).
   public void timeWrite(String fileType, int keyLength, int valueLength,
-    String codecName, long rows, String writeMethod, int minBlockSize)
+    String codecName, long rows, String writeMethod, int minBlockSize,
+    DataBlockEncoding encoding)
   throws IOException {
     System.out.println("File Type: " + fileType);
     System.out.println("Writing " + fileType + " with codecName: " + codecName);
@@ -150,6 +173,7 @@ public class TestHFilePerformance extends TestCase {
 
     //Using separate randomizer for key/value with seeds matching Sequence File.
     byte[] key = new byte[keyLength];
+    byte[] key2 = new byte[keyLength];
     byte[] value = new byte[valueLength];
     KeyValueGenerator generator = new KeyValueGenerator();
 
@@ -165,6 +189,7 @@ public class TestHFilePerformance extends TestCase {
             .withOutputStream(fout)
             .withBlockSize(minBlockSize)
             .withCompression(codecName)
+            .withDataBlockEncoder(new HFileDataBlockEncoderImpl(encoding))
             .create();
 
         // Writing value in one shot.
@@ -174,6 +199,10 @@ public class TestHFilePerformance extends TestCase {
           writer.append(key, value);
           totalBytesWritten += key.length;
           totalBytesWritten += value.length;
+          
+          byte[] tmp = key2;
+          key2 = key;
+          key = tmp;
          }
         writer.close();
     } else if ("SequenceFile".equals(fileType)){
@@ -219,6 +248,8 @@ public class TestHFilePerformance extends TestCase {
     printlnWithTimestamp("Data written: ");
     printlnWithTimestamp("  rate  = " +
       totalBytesWritten / getIntervalMillis() * 1000 / 1024 / 1024 + "MB/s");
+    printlnWithTimestamp("        = " +
+      rows * 1000 / getIntervalMillis() + "rows/sec");
     printlnWithTimestamp("  total = " + totalBytesWritten + "B");
 
     printlnWithTimestamp("File written: ");
@@ -255,9 +286,8 @@ public class TestHFilePerformance extends TestCase {
               HFileScanner scanner = reader.getScanner(false, false);
               scanner.seekTo();
               for (long l=0; l<rows; l++ ) {
-                key = scanner.getKey();
-                val = scanner.getValue();
-                totalBytesRead += key.limit() + val.limit();
+                KeyValue kv = scanner.getKeyValue();
+                totalBytesRead += kv.getKeyLength() + kv.getValueLength();
                 scanner.next();
               }
             }
@@ -299,6 +329,8 @@ public class TestHFilePerformance extends TestCase {
     printlnWithTimestamp("Data read: ");
     printlnWithTimestamp("  rate  = " +
       totalBytesRead / getIntervalMillis() * 1000 / 1024 / 1024 + "MB/s");
+    printlnWithTimestamp("        = " +
+        rows * 1000 / getIntervalMillis() + "rows/sec");
     printlnWithTimestamp("  total = " + totalBytesRead + "B");
 
     printlnWithTimestamp("File read: ");
@@ -312,48 +344,20 @@ public class TestHFilePerformance extends TestCase {
 
   public void testRunComparisons() throws IOException {
 
-    int keyLength = 100; // 100B
-    int valueLength = 5*1024; // 5KB
-    int minBlockSize = 10*1024*1024; // 10MB
-    int rows = 10000;
-
-    System.out.println("****************************** Sequence File *****************************");
-
-    timeWrite("SequenceFile", keyLength, valueLength, "none", rows, null, minBlockSize);
-    System.out.println("\n+++++++\n");
-    timeReading("SequenceFile", keyLength, valueLength, rows, -1);
-
-    System.out.println("");
-    System.out.println("----------------------");
-    System.out.println("");
-
-    /* DISABLED LZO
-    timeWrite("SequenceFile", keyLength, valueLength, "lzo", rows, null, minBlockSize);
-    System.out.println("\n+++++++\n");
-    timeReading("SequenceFile", keyLength, valueLength, rows, -1);
-
-    System.out.println("");
-    System.out.println("----------------------");
-    System.out.println("");
-
-    /* Sequence file can only use native hadoop libs gzipping so commenting out.
-     */
-    try {
-      timeWrite("SequenceFile", keyLength, valueLength, "gz", rows, null,
-        minBlockSize);
-      System.out.println("\n+++++++\n");
-      timeReading("SequenceFile", keyLength, valueLength, rows, -1);
-    } catch (IllegalArgumentException e) {
-      System.out.println("Skipping sequencefile gz: " + e.getMessage());
-    }
-
+    int keyLength = 16;
+    int valueLength = 100;
+    int minBlockSize = BLOCK_SIZE;
+    int rows = 10000000;
 
     System.out.println("\n\n\n");
     System.out.println("****************************** HFile *****************************");
 
-    timeWrite("HFile", keyLength, valueLength, "none", rows, null, minBlockSize);
+    timeWrite("HFile", keyLength, valueLength, "none", rows, null, minBlockSize,
+        DataBlockEncoding.PREFIX);
     System.out.println("\n+++++++\n");
-    timeReading("HFile", keyLength, valueLength, rows, 0 );
+    for (int i = 0; i < 40; i++) {
+      timeReading("HFile", keyLength, valueLength, rows, 0 );
+    }
 
     System.out.println("");
     System.out.println("----------------------");
@@ -371,9 +375,9 @@ public class TestHFilePerformance extends TestCase {
     System.out.println("----------------------");
     System.out.println("");
 */
-    timeWrite("HFile", keyLength, valueLength, "gz", rows, null, minBlockSize);
+    //timeWrite("HFile", keyLength, valueLength, "gz", rows, null, minBlockSize);
     System.out.println("\n+++++++\n");
-    timeReading("HFile", keyLength, valueLength, rows, 0 );
+    //timeReading("HFile", keyLength, valueLength, rows, 0 );
 
     System.out.println("\n\n\n\nNotes: ");
     System.out.println(" * Timing includes open/closing of files.");
@@ -393,5 +397,11 @@ public class TestHFilePerformance extends TestCase {
   @org.junit.Rule
   public org.apache.hadoop.hbase.ResourceCheckerJUnitRule cu =
     new org.apache.hadoop.hbase.ResourceCheckerJUnitRule();
+  
+  public static void main(String []args) throws IOException {
+    TestHFilePerformance test = new TestHFilePerformance();
+    test.setUp();
+    test.testRunComparisons();
+  }
 }
 

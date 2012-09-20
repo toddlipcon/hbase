@@ -263,6 +263,29 @@ public final class ByteBufferUtils {
    * Read integer from buffer coded in 7 bits and increment position.
    * @return Read integer.
    */
+  public static int readCompressedInt2(ByteBuffer buffer) {
+    byte b = buffer.get();
+    // Common-case: single-byte lengths
+    if ((b & NEXT_BIT_MASK) == 0) {
+      return b & VALUE_MASK;
+    }
+    
+    // Fall-back case:
+    int result = b & VALUE_MASK;
+    
+    for (int shift = 7; shift <= 28; shift += 7) {
+      b = buffer.get();
+      if ((b & NEXT_BIT_MASK) != 0) {
+        // more bytes are present
+        result |= (b & VALUE_MASK) << shift;
+      } else {
+        result |= (b << shift);
+        return result;
+      }
+    }
+    throw new IndexOutOfBoundsException("invalid incoded int - too many bits");
+  }
+
   public static int readCompressedInt(ByteBuffer buffer) {
     byte b = buffer.get();
     if ((b & NEXT_BIT_MASK) != 0) {
@@ -270,7 +293,7 @@ public final class ByteBufferUtils {
     }
     return b & VALUE_MASK;
   }
-
+  
   /**
    * Read long which was written to fitInBytes bytes and increment position.
    * @param fitInBytes In how many bytes given long is stored.
