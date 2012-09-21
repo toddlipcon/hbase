@@ -962,8 +962,9 @@ public class KeyValue implements Writable, HeapSize {
     long timestamp = Bytes.toLong(b, o + (l - TIMESTAMP_TYPE_SIZE));
     String timestampStr = humanReadableTimestamp(timestamp);
     byte type = b[o + l - 1];
-    return row + "/" + family +
+    return row + " cf=" + family +
       (family != null && family.length() > 0? ":" :"") +
+      " qual=" +
       qualifier + "/" + timestampStr + "/" + Type.codeToType(type);
   }
 

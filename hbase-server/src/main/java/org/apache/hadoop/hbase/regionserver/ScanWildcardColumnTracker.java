@@ -68,7 +68,7 @@ public class ScanWildcardColumnTracker implements ColumnTracker {
   @Override
   public MatchCode checkColumn(byte[] bytes, int offset, int length,
       long timestamp, byte type, boolean ignoreCount) throws IOException {
-    
+  
     if (columnBuffer == null) {
       // first iteration.
       resetBuffer(bytes, offset, length);
@@ -105,7 +105,8 @@ public class ScanWildcardColumnTracker implements ColumnTracker {
     throw new IOException(
         "ScanWildcardColumnTracker.checkColumn ran into a column actually " +
         "smaller than the previous column: " +
-        Bytes.toStringBinary(bytes, offset, length));
+        Bytes.toStringBinary(bytes, offset, length) +
+        "<=" + Bytes.toStringBinary(columnBuffer, columnOffset, columnLength));
   }
 
   private void resetBuffer(byte[] bytes, int offset, int length) {

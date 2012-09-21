@@ -156,9 +156,11 @@ abstract class BufferedDataBlockEncoder implements DataBlockEncoder {
     @Override
     public ByteBuffer getKeyValueBuffer() {
       int len = 2 * Bytes.SIZEOF_INT + current.keyLength + current.valueLength;
-      kvSharedBuffer = realloc(kvSharedBuffer, len);
-      
-      ByteBuffer kvBuffer = ByteBuffer.wrap(kvSharedBuffer, 0, len);
+      // TODO: following would go faster, but ScanWildcardTracker doesn't
+      // make a copy of the previously seen column
+      //kvSharedBuffer = realloc(kvSharedBuffer, len);
+      //ByteBuffer kvBuffer = ByteBuffer.wrap(kvSharedBuffer, 0, len);
+      ByteBuffer kvBuffer = ByteBuffer.allocate(len);
       kvBuffer.putInt(current.keyLength);
       kvBuffer.putInt(current.valueLength);
       kvBuffer.put(current.keyBuffer, 0, current.keyLength);

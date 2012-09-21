@@ -82,6 +82,8 @@ public class TestStorePerformance {
     int READ_REPETITIONS = 5;
   }
 
+  private static final byte[] FAMILY = "f".getBytes();
+
   private final Args args;
   private KeyValueGenerator kvgen;
   private Configuration conf;
@@ -117,12 +119,14 @@ public class TestStorePerformance {
     byte[] key = new byte[args.KEY_SIZE];
     byte[] val = new byte[args.VALUE_SIZE];
     
-    // Layout: row cf qual
+    // Layout: cf row qual
     int cfLen = 1;
     int qualLen = 1;
     int rowLen = key.length - cfLen - qualLen;
-    int cfOffset = rowLen;
-    int qualOffset = rowLen + cfLen;
+
+    int cfOffset = 0;
+    int rowOffset = cfLen;
+    int qualOffset = rowOffset + rowLen;
     
     long ts = 0;
     
@@ -137,7 +141,7 @@ public class TestStorePerformance {
         kvgen.getValue(val);
 
         KeyValue kv = new KeyValue(
-            key, 0, rowLen,
+            key, rowOffset, rowLen,
             key, cfOffset, cfLen,
             key, qualOffset, qualLen,
             ts++,
@@ -226,28 +230,19 @@ public class TestStorePerformance {
     List<KeyValueScanner> scanners = Lists.newArrayList();
 
     Scan scan = new Scan();
-    
-    
-    byte[] family = new byte[0];
-    int minVersions = 1;
-    int maxVersions = 1;
-    long ttl = Long.MAX_VALUE;
-    boolean keepDeletedCells = false;
-    long timeToPurgeDeletes = 0;
-    KVComparator comparator = KeyValue.COMPARATOR;
-    ScanInfo scanInfo = new ScanInfo(family, minVersions, maxVersions, ttl, keepDeletedCells, timeToPurgeDeletes, comparator);
+    ScanInfo scanInfo = new ScanInfo(FAMILY, 0, Integer.MAX_VALUE,
+        Long.MAX_VALUE, false, 0, KeyValue.COMPARATOR);
     NavigableSet<byte[]> columns = null;
     for (String pStr : paths) {
       Path p = new Path(pStr);
       FileSystem fs = getFs(p);
-      Reader reader = new StoreFile.Reader(fs, p, cacheConf,
-          DataBlockEncoding.NONE);
+      Reader reader = new StoreFile.Reader(fs, p, cacheConf, DataBlockEncoding.NONE);
       StoreFileScanner scanner = reader.getStoreFileScanner(false, false);
       scanners.add(scanner);
     }
     
     StoreScanner ss = new StoreScanner(scan, scanInfo, ScanType.USER_SCAN, columns, scanners);
-    
+
     long count = 0;
     long keyBytes = 0, valBytes = 0;
     Stopwatch sw = new Stopwatch().start();
@@ -273,6 +268,7 @@ public class TestStorePerformance {
   }
 
   private static class KeyValueGenerator {
+
     final byte[] randomValueData;
     
     final long keyIncrement;
@@ -303,8 +299,8 @@ public class TestStorePerformance {
       }
     }
 
-    // Key is always random now.
     void getKey(byte[] key) {
+      key[0] = FAMILY[0];
       Bytes.putLong(key, key.length - 8, keySequence);
       keySequence += keyIncrement;
     }
