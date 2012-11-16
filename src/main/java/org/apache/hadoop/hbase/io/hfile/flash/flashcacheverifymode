@@ -1,0 +1,54 @@
+    	if(VERIFYMODE) {
+    		RAMEntry re=mRAMCache.get(key);
+    		if(re==null)
+    			return null;
+        	try {
+                mReaderLock.lock();
+        		/*
+                FlashEntry fe=mFlashCache.get(key);
+                if(fe!=null) {
+                    mStats.hit(caching);
+                	LOG.info("Flash: Hit from flash cache!!! Key "+key.toString());
+                	Cacheable fc=fe.getData(),rc=re.getData();
+                	int fcl=fc.getSerializedLength(),rcl=rc.getSerializedLength();
+                	if(fcl!=rcl) {
+                		LOG.info("Flash: Fucked length");
+                	}
+                	ByteBuffer fcbb=ByteBuffer.allocate(fcl),rcbb=ByteBuffer.allocate(rcl);
+                	fc.serialize(fcbb);
+                	rc.serialize(rcbb);
+                	if(!fcbb.equals(rcbb))
+                		LOG.info("Flash: Fucked data");
+                	HFileBlock before=(HFileBlock)rc,after=(HFileBlock)fc;                	
+                    return fc;
+                    */
+ 
+        		/* Simple symmetry test...
+    		 	 */
+    			Cacheable rc=re.getData();
+    			ByteBuffer rbb=ByteBuffer.allocate(rc.getSerializedLength());
+    			rc.serialize(rbb);
+    			Cacheable newrc=rc.getDeserializer().deserialize(rbb.asReadOnlyBuffer());
+    			HFileBlock before=(HFileBlock)rc,after=(HFileBlock)newrc;
+
+    			/*            	LOG.info("Flash: Before: "+key.toString()+": "+Bytes.toStringBinary(beforebb.array(),beforebb.arrayOffset(),
+                        beforebb.limit()-beforebb.arrayOffset()));
+            	LOG.info("Flash:  After: "+key.toString()+": "+Bytes.toStringBinary(afterbb.array(),afterbb.arrayOffset(),
+                        afterbb.limit()-afterbb.arrayOffset()));*/
+            	//LOG.info("Flash: Before "+key.toString()+": "+HFileBlock.toStringHeader(beforebb));
+            	//LOG.info("Flash:  After "+key.toString()+": "+HFileBlock.toStringHeader(afterbb));            	
+            	//after.setBufferNACTODO(before.getBufferNACTODO()); // EVIL EVIL TODO HACK EVIL
+            	//return after;
+            	//before.compareToNACTODO(LOG, after);
+            	//after.fixupShitNACTODO(before);
+            	return after;
+        	} catch(IOException ioex) {
+                LOG.error("IO exception reading from flash cache; disabling... check your SSD or ioDrive is in good health..."+ioex.toString(),ioex);
+                disableCache();
+        	} finally {
+                mReaderLock.unlock();
+        	}
+        	return null;
+    	}
+
+

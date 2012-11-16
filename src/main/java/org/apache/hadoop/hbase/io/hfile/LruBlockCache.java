@@ -169,6 +169,9 @@ public class LruBlockCache implements BlockCache, HeapSize {
 
   /** Overhead of the structure itself */
   private long overhead;
+  
+  /** Where to send victims (blocks evicted from the cache) */
+  private BlockCache victimHandler=null;
 
   /**
    * Default constructor.  Specify maximum size and expected average block
@@ -253,6 +256,11 @@ public class LruBlockCache implements BlockCache, HeapSize {
       runEviction();
     }
   }
+  
+  public void setVictimCache(BlockCache handler) {
+	  assert victimHandler==null;
+	  victimHandler=handler;
+  }
 
   // BlockCache implementation
 
@@ -326,6 +334,8 @@ public class LruBlockCache implements BlockCache, HeapSize {
     CachedBlock cb = map.get(cacheKey);
     if(cb == null) {
       stats.miss(caching);
+      if(victimHandler!=null)
+    	  return victimHandler.getBlock(cacheKey,caching);
       return null;
     }
     stats.hit(caching);
@@ -361,10 +371,14 @@ public class LruBlockCache implements BlockCache, HeapSize {
           ++numEvicted;
       }
     }
+    if(victimHandler!=null)
+    	victimHandler.evictBlocksByHfileName(hfileName);
     return numEvicted;
   }
 
   protected long evictBlock(CachedBlock block) {
+      if(victimHandler!=null)
+          victimHandler.cacheBlock(block.getCacheKey(),block.getBuffer());
     map.remove(block.getCacheKey());
     updateSizeMetrics(block, true);
     elements.decrementAndGet();
@@ -397,9 +411,10 @@ public class LruBlockCache implements BlockCache, HeapSize {
       long bytesToFree = currentSize - minSize();
 
       if (LOG.isDebugEnabled()) {
+          /* NAC HACK
         LOG.debug("Block cache LRU eviction started; Attempting to free " +
           StringUtils.byteDesc(bytesToFree) + " of total=" +
-          StringUtils.byteDesc(currentSize));
+          StringUtils.byteDesc(currentSize));*/
       }
 
       if(bytesToFree <= 0) return;
@@ -455,12 +470,13 @@ public class LruBlockCache implements BlockCache, HeapSize {
         long single = bucketSingle.totalSize();
         long multi = bucketMulti.totalSize();
         long memory = bucketMemory.totalSize();
+        /* NAC HACK
         LOG.debug("Block cache LRU eviction completed; " +
           "freed=" + StringUtils.byteDesc(bytesFreed) + ", " +
           "total=" + StringUtils.byteDesc(this.size.get()) + ", " +
           "single=" + StringUtils.byteDesc(single) + ", " +
           "multi=" + StringUtils.byteDesc(multi) + ", " +
-          "memory=" + StringUtils.byteDesc(memory));
+          "memory=" + StringUtils.byteDesc(memory)); */
       }
     } finally {
       stats.evict();
@@ -732,6 +748,8 @@ public class LruBlockCache implements BlockCache, HeapSize {
   }
 
   public void shutdown() {
+      if(victimHandler!=null)
+          victimHandler.shutdown();
     this.scheduleThreadPool.shutdown();
     for (int i = 0; i < 10; i++) {
       if (!this.scheduleThreadPool.isShutdown()) Threads.sleep(10);

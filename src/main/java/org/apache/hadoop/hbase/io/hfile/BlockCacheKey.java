@@ -17,6 +17,13 @@
  */
 package org.apache.hadoop.hbase.io.hfile;
 
+import java.io.IOException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.concurrent.ArrayBlockingQueue;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.io.HeapSize;
 import org.apache.hadoop.hbase.io.encoding.DataBlockEncoding;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -25,10 +32,10 @@ import org.apache.hadoop.hbase.util.ClassSize;
 /**
  * Cache Key for use with implementations of {@link BlockCache}
  */
-public class BlockCacheKey implements HeapSize {
-  private final String hfileName;
-  private final long offset;
-  private final DataBlockEncoding encoding;
+public class BlockCacheKey implements HeapSize, java.io.Serializable {
+  private String hfileName;
+  private long offset;
+  private DataBlockEncoding encoding;
 
   public BlockCacheKey(String file, long offset, DataBlockEncoding encoding,
       BlockType blockType) {
@@ -95,4 +102,99 @@ public class BlockCacheKey implements HeapSize {
   public DataBlockEncoding getDataBlockEncoding() {
     return encoding;
   }
+
+  private void writeObject(java.io.ObjectOutputStream out) throws IOException {
+	  out.writeUTF(hfileName);
+	  out.writeLong(offset);
+	  out.writeObject(encoding);
+  }
+
+  private void readObject(java.io.ObjectInputStream in) throws IOException,ClassNotFoundException {
+	  hfileName=in.readUTF();
+	  offset=in.readLong();
+	  encoding=(DataBlockEncoding)in.readObject();
+  }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    // Added by NAC - stuff for high performance repeated getting of hashes and digests
+    // This can all go away if we mod this thing to store the underlying binary data
+    // behind the filename instead...
+    ////////////////////////////////////////////////////////////////////////////////
+    static final Log LOG = LogFactory.getLog(BlockCacheKey.class);
+    static final int DIGEST_CACHE_SIZE=512;
+    static private ArrayBlockingQueue<MessageDigest>MDigests=new
+        ArrayBlockingQueue<MessageDigest>(DIGEST_CACHE_SIZE);
+    private byte[]mBytes;
+    private int mHashCode=-1;
+    private void reduce() {
+        java.security.MessageDigest md=null;
+        byte[]buffer=new byte[hfileName.length()+10];
+        int i=0;
+        for(;i<hfileName.length();++i)
+            buffer[i]=(byte)hfileName.charAt(i);
+        buffer[i++]=(byte)offset;
+        buffer[i++]=(byte)(offset>>8);
+        buffer[i++]=(byte)(offset>>16);
+        buffer[i++]=(byte)(offset>>24);
+        buffer[i++]=(byte)(offset>>32);
+        buffer[i++]=(byte)(offset>>40);
+        buffer[i++]=(byte)(offset>>48);
+        buffer[i++]=(byte)(offset>>56);
+        buffer[i++]=(byte)encoding.getId();
+        buffer[i++]=(byte)((encoding.getId()>>8));
+        try {
+            md=getDigest();
+            mBytes=md.digest(buffer); // also resets the digest per javadoc
+            mHashCode=mBytes[31];
+            int mul=1;
+            for(i=0;i<32;++i,mul*=31)
+                mHashCode+=(mBytes[i]+30)*mul;
+        } finally {
+        	if(md!=null)
+        		releaseDigest(md);
+        }
+    }
+        
+    public int fcHashCode() {
+        if(mHashCode==-1)
+            reduce();
+        return mHashCode&0x7FFFFFFF;
+    }
+
+    public int fcHashCode(int modulo) {
+        return fcHashCode()%modulo;
+    }
+
+    public byte[]fcKeyBytes() {
+        if(mHashCode==-1)
+            reduce();
+        return mBytes;
+    }
+
+    public static final int fcKeyBytesLength() {
+        MessageDigest dg=null;
+        try {
+            dg=getDigest();
+            return dg.getDigestLength();
+        } finally {
+            releaseDigest(dg);
+        }
+    }
+
+    static private MessageDigest getDigest() {
+        MessageDigest dg=MDigests.poll();
+        if(dg==null) {
+            try {
+                dg=java.security.MessageDigest.getInstance("SHA-256");
+            } catch(NoSuchAlgorithmException ex) {
+                assert dg!=null; // This should never fail
+                LOG.fatal("Can't find necessary message digest... Should never happen");
+            }
+        }
+        return dg;
+    }
+
+    static private void releaseDigest(MessageDigest dg) {
+        MDigests.offer(dg);
+    }
 }

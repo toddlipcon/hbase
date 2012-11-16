@@ -1,0 +1,45 @@
+    
+    private void testDirectArray() {
+    	int size=32*1024*1024; // 32 meg
+    	DirectArray da=new DirectArray(1,size,false);
+    	
+    	for(int i=0;i<10000;++i) {
+    		if(i%5==0) { // single get at start
+    			int len=1;
+    			byte val=(byte)(Math.random()*255); byte[]arr=new byte[len]; for(int j=0;j<arr.length;++j) { arr[j]=val; }
+    			byte[]arr2=new byte[len];
+    			da.put(0, arr);
+    			da.get(0, arr2);
+    			for(int j=0;j<arr.length;++j) { assert arr[j]==arr2[j]; }
+    		} else if(i%5==1) { // single get at end
+    			int len=1;
+    			byte val=(byte)(Math.random()*255); byte[]arr=new byte[len]; for(int j=0;j<arr.length;++j) { arr[j]=val; }
+    			byte[]arr2=new byte[len];
+    			da.put(size-len, arr);
+    			da.get(size-len, arr2);
+    			for(int j=0;j<arr.length;++j) { assert arr[j]==arr2[j]; }
+    		} else if(i%5==2) { // multi get at start
+    			int len=(int)(Math.random()*size);
+    			byte val=(byte)(Math.random()*255); byte[]arr=new byte[len]; for(int j=0;j<arr.length;++j) { arr[j]=val; }
+    			byte[]arr2=new byte[len];
+    			da.putMultiple(0,len,arr);
+    			da.getMultiple(0,len,arr2);
+    			for(int j=0;j<arr.length;++j) { assert arr[j]==arr2[j]; }
+    		} else if(i%5==3) { // multi get at end
+    			int len=(int)(Math.random()*size);
+    			byte val=(byte)(Math.random()*255); byte[]arr=new byte[len]; for(int j=0;j<arr.length;++j) { arr[j]=val; }
+    			byte[]arr2=new byte[len];
+    			da.putMultiple(size-len,len,arr);
+    			da.getMultiple(size-len,len,arr2);
+    			for(int j=0;j<arr.length;++j) { assert arr[j]==arr2[j]; }
+    		} else if(i%5==4) { // random multi get - this one breaks stuff
+    			int len=(int)(Math.random()*size);
+    			int start=(int)(Math.random()*(size-len));
+    			byte val=(byte)(Math.random()*255); byte[]arr=new byte[len]; for(int j=0;j<arr.length;++j) { arr[j]=val; }
+    			byte[]arr2=new byte[len];
+    			da.putMultiple(start,len,arr);
+    			da.getMultiple(start,len,arr2);
+    			for(int j=0;j<arr.length;++j) { assert arr[j]==arr2[j]; }
+    		}
+    	}
+    }

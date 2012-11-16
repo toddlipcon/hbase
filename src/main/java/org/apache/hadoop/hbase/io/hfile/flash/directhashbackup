@@ -1,0 +1,277 @@
+package org.apache.hadoop.hbase.io.hfile.flash;
+
+import java.nio.ByteBuffer;
+import java.util.BitSet;
+import java.util.Iterator;
+
+// TODO: Shite! ByteBuffer isn't concurrent safe. So need R/W lock :( :( :(
+
+/* Big hash table that stores keys and values inline to avoid allocating tons of
+ * objects on the heap. Definitely not as easy to program to as the built-in
+ * stuff, but more runtime-efficient.
+ * We use multiple underlying byte buffers since the ByteBuffer itself doens't
+ * have any stateless methods that work with multiple threads concurrently.
+ */
+public final class DirectHash implements Iterable<DirectHash.SlotReference> {
+    private DirectArray mStore;
+    private byte[]mUsed;
+    private int mBufferCount,mKeyLength,mValueLength,mSlotLength,mSlotCount;
+ 	
+    public interface GetHandlerUnhashed {
+        void keyToBytes(ByteBuffer output);
+        void bytesToValue(ByteBuffer input,int len);
+    }
+
+    public interface RemoveHandlerUnhashed {
+        void keyToBytes(ByteBuffer output);
+    }
+
+    public interface PutHandlerUnhashed {
+        void keyToBytes(ByteBuffer output);
+        void valueToBytes(ByteBuffer output);
+    }
+
+    public interface GetHandlerHashed {
+        int dhHashCode();
+        byte[] keyArray();
+        void bytesToValue(ByteBuffer input,int len);
+    }
+	
+    public interface RemoveHandlerHashed {
+        int dhHashCode();
+        byte[] keyArray();
+    }
+
+    public interface PutHandlerHashed {
+        int dhHashCode();
+        void keyToBytes(ByteBuffer output);
+        void valueToBytes(ByteBuffer output);
+    }
+
+    public DirectHash() {
+    }
+	
+    static public long recommendedHashSize(long dataPoints) {
+        return dataPoints*2+1;
+    }
+	
+    public void configure(int slotCount,int keyBytes,int valueBytes,boolean direct) {
+        assert (slotCount&1)==1; // At least be odd, if not prime
+        assert keyBytes>0&&valueBytes>0;
+        int objSize=keyBytes+valueBytes+4; // for hash code
+        mStore=new DirectArray(objSize,slotCount,direct);
+        mUsed=new byte[slotCount];
+        for(int i=0;i<slotCount;++i)
+        	mUsed[i]=0;
+        mKeyLength=keyBytes;
+        mSlotCount=slotCount;
+        mValueLength=valueBytes;
+        mSlotLength=objSize;
+    }
+
+    /* Get an entity. We have to copy the key to compute the hash code.
+     */
+    public boolean getUnhashed(GetHandlerUnhashed handler) {
+        ByteBuffer keyBytes=ByteBuffer.allocate(mKeyLength);
+        handler.keyToBytes(keyBytes);
+        keyBytes.rewind();
+        int keyHash=keyBytes.hashCode(),slot=keyHash%mSlotCount;
+        if(mUsed[slot]==0)
+        	return false;
+        ByteBuffer bb=mStore.lockBuffer(slot);
+        try {
+            // Compare hash, then contents of store key to keyBytes. Match - return value; no match - miss
+        	int storedHash=bb.getInt();
+        	if(storedHash!=keyHash)
+        		return false;
+            for(int i=0;i<mKeyLength;++i)
+                if(bb.get()!=keyBytes.get())
+                    return false;
+            handler.bytesToValue(bb,mValueLength);
+            return true;
+        } finally {
+            mStore.unlockBuffer(slot);
+        }
+    }
+
+    public boolean removeUnhashed(RemoveHandlerUnhashed handler) {
+        ByteBuffer keyBytes=ByteBuffer.allocate(mKeyLength);
+        handler.keyToBytes(keyBytes);
+        keyBytes.rewind();
+        int keyHash=keyBytes.hashCode(),slot=keyHash%mSlotCount;
+        if(mUsed[slot]==0)
+        	return false;
+        ByteBuffer bb=mStore.lockBuffer(slot);
+        try {
+            // Compare hash, then contents of store key to keyBytes. Match - return value; no match - miss
+        	int storedHash=bb.getInt();
+        	if(storedHash!=keyHash)
+        		return false;
+            for(int i=0;i<mKeyLength;++i)
+                if(bb.get()!=keyBytes.get())
+                    return false;
+            mUsed[slot]=0;
+            return true;
+        } finally {
+            mStore.unlockBuffer(slot);
+        }
+    }
+
+    /* Get an entity. Assumes the caller has already computed the hash
+     * code so we don't need to copy the key.
+     */
+    public boolean getHashed(GetHandlerHashed handler) {
+        int keyHash=handler.dhHashCode(),slot=keyHash%mSlotCount;
+        if(mUsed[slot]==0)
+        	return false;
+        ByteBuffer bb=mStore.lockBuffer(slot);
+        try {
+            // Compare contents of store hash and key to keyBytes. Match - return value; no match - miss
+        	if(bb.getInt()!=keyHash)
+        		return false;
+        	byte[]realKey=handler.keyArray();
+        	assert mKeyLength==realKey.length;
+            for(int i=0;i<mKeyLength;++i)
+                if(bb.get()!=realKey[i])
+                    return false;
+            handler.bytesToValue(bb,mValueLength);
+            return true;
+        } finally {
+            mStore.unlockBuffer(slot);
+        }
+    }
+
+    public boolean removeHashed(RemoveHandlerHashed handler) {
+        int keyHash=handler.dhHashCode(),slot=keyHash%mSlotCount;
+        if(mUsed[slot]==0)
+        	return false;
+        ByteBuffer bb=mStore.lockBuffer(slot);
+        try {
+            // Compare contents of store hash and key to keyBytes. Match - return value; no match - miss
+        	if(bb.getInt()!=keyHash)
+        		return false;
+        	byte[]realKey=handler.keyArray();
+        	assert mKeyLength==realKey.length;
+            for(int i=0;i<mKeyLength;++i)
+                if(bb.get()!=realKey[i])
+                    return false;
+            mUsed[slot]=0;
+            return true;
+        } finally {
+            mStore.unlockBuffer(slot);
+        }
+    }
+    
+	public void removeSlot(int index) {
+		assert index>=0&&index<mSlotCount;
+		mUsed[index]=0;
+	}
+
+
+	/* Put an entity - slower version that requires a copy of the key into the desination slot
+     * after hashing the key to get the bucket number
+     */
+    public void putUnhashed(PutHandlerUnhashed handler) {
+        ByteBuffer keyBytes=ByteBuffer.allocate(mKeyLength);
+        handler.keyToBytes(keyBytes);
+        keyBytes.rewind();
+        int keyHash=keyBytes.hashCode(),slot=keyHash%mSlotCount;
+        ByteBuffer bb=mStore.lockBuffer(slot);
+        mUsed[slot]=1;
+        try { // Trash whatever key and value are stored there.
+        	bb.putInt(keyHash);
+            bb.put(keyBytes);
+            handler.valueToBytes(bb);
+        } finally {
+            mStore.unlockBuffer(slot);
+        }
+    }
+
+    /* Put an entity - fast version that doesn't require key copying since the handler can
+     * provide a hash code alongside the key
+     */
+    public void putHashed(PutHandlerHashed handler) {
+        int keyHash=handler.dhHashCode(),slot=keyHash%mSlotCount;
+        mUsed[slot]=1;
+        ByteBuffer bb=mStore.lockBuffer(slot);
+        try { // Trash whatever key and value are stored there.
+        	bb.putInt(keyHash);
+            handler.keyToBytes(bb);
+            handler.valueToBytes(bb);
+        } finally {
+            mStore.unlockBuffer(slot);
+        }
+    }
+    
+	/* The iterator does not lock/unlock the underlying data structure. So if you do stuff
+     * concurrent with it, good luck!
+     */
+    public class SlotIterator implements Iterator<SlotReference> {
+    	private SlotReference mSlot;
+
+    	public SlotIterator() {
+    		mSlot=new SlotReference();
+    	}
+		public boolean hasNext() {
+			return mSlot.slot()<mSlotCount-1;
+		}
+		public SlotReference next() {
+			mSlot.setSlot(mSlot.slot()+1);
+			return mSlot;
+		}
+		public void remove() {
+			mSlot.remove();
+		}
+    }
+    
+    public class SlotReference {
+    	private int mSlot;
+    	private int mHashCode;
+    	private boolean mGotHashCode;
+    	public int slot() { return mSlot; }
+    	public SlotReference() {
+    		mSlot=-1;
+    		mGotHashCode=false;
+    	}
+    	public SlotReference(int slot) {
+    		setSlot(slot);
+    	}
+    	public boolean used() {
+    		return mUsed[mSlot]==1;
+    	}
+    	public void setSlot(int slot) {
+    		assert mSlot>=0&&slot<mSlotCount;
+    		mSlot=slot;
+    		mGotHashCode=false;
+    	}
+    	public ByteBuffer getKey() {
+    		ByteBuffer bb=mStore.getBufferUnlocked(mSlot);
+    		bb.position(bb.position()+4);
+    		return bb;
+    	}
+    	public ByteBuffer getValue() {
+    		ByteBuffer bb=mStore.getBufferUnlocked(mSlot);
+    		bb.position(bb.position()+4+mKeyLength);
+    		return bb;
+    	}
+    	public int getHashCode() {
+    		if(!mGotHashCode) {
+	    		ByteBuffer bb=mStore.getBufferUnlocked(mSlot);
+	    		mHashCode=bb.getInt();
+	    		mGotHashCode=true;
+    		}
+    		return mHashCode;
+    	}
+    	public void remove() {
+    		mUsed[mSlot]=0;
+    	}
+    }
+    
+    public SlotReference getSlotReference(int slotNo) {
+    	return new SlotReference(slotNo);
+    }
+
+	public Iterator<SlotReference> iterator() {
+		return new SlotIterator();
+	}
+}

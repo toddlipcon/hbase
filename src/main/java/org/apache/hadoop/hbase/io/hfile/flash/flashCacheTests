@@ -1,0 +1,97 @@
+    boolean testFlashCache() {
+    	/* Test the allocator first
+    	 */
+    	int[]blockSizes=new int[2];
+    	blockSizes[0]=4096; blockSizes[1]=8192;
+    	boolean full=false;
+    	int i=0;
+    	ArrayList<Long>allocations=new ArrayList<Long>();
+    	// Fill the allocated extents
+    	while(!full) {
+            ++i;
+            try {
+                allocations.add(new Long(mAllocator.allocateBlock(blockSizes[i%blockSizes.length])));
+            } catch(FlashAllocator.CacheFullException cfe) {
+                mAllocator.logStatistics();
+                full=true;
+            }
+    	}
+
+    	// Mess around allocating/freeing a bit.
+    	for(int j=0;j<1000;++j) {
+            for(i=0;i<10;++i) {
+                int idx=((int)(Math.random()*(double)allocations.size()));
+                allocations.remove(idx);
+            }
+            for(i=0;i<5;++i) {
+                try {
+                    allocations.add(new Long(mAllocator.allocateBlock(blockSizes[i%blockSizes.length])));
+                } catch(FlashAllocator.CacheFullException cfe) {
+	    			
+                }
+            }
+    	}
+    	return true;
+    }
+    
+    boolean testFlashCache2() {
+        long t1=new java.util.Date().getTime();
+        long buffsize=65536,bytesdone=0;
+        ByteBuffer bb=ByteBuffer.allocate((int)buffsize);
+        LOG.info("Flashperf: Starting test");
+        for(int i=0;i<100000000;++i) {
+            double random=Math.random()*(double)mFileSize;
+            long offset=(((long)random)/1024)*1024;
+            if(offset>mFileSize-buffsize)
+                offset=mFileSize-buffsize;
+            try {
+            	mFileChannel.read(bb,offset);
+            }catch(IOException ex) { LOG.info("Flashperf: IO Exception" +ex); }
+            bytesdone+=buffsize;
+        }
+        long t2=new java.util.Date().getTime();
+        LOG.info("Flashperf: Did "+bytesdone+" bytes in "+(t2-t1)+" millis");
+    	return true;
+    }
+    
+    boolean testFlashCache3() {
+    	String[]testStrings={"oiavoiajvdfoisvoidfoifdb","eirhg0943uu45og","348yt9erhgrehiughdivhiuev","4239y9hveiuwvkdfvnkvlvisfv"};
+    	byte[][] testBytes=new byte[4][];
+    	for(int i=0;i<testStrings.length;++i)
+    		testBytes[i]=testStrings[i].getBytes();
+    	java.security.MessageDigest md=null;
+    	try {
+    		md=java.security.MessageDigest.getInstance("SHA-256");
+    	} catch(Exception ex) {}
+        long t1=new java.util.Date().getTime(),t2=0,t3=0,t4=0;
+        byte[]buffer=new byte[1024];
+        try {
+	    	for(int j=0;j<1000000;++j) {
+	    		for(int i=0;i<testStrings.length;++i) {
+	    			//byte[]bytes=testStrings[i].getBytes(CharSet.ASCII_ALPHA);
+	    			String str=testStrings[i];
+	    			for(int k=0;k<str.length();++k)
+	    				buffer[i]=(byte)str.charAt(k);
+	    			md.digest(buffer,0,str.length()<32?32:str.length());
+	    		}
+	    	}
+	    	t2=new java.util.Date().getTime();
+	    	try {
+	    		md=java.security.MessageDigest.getInstance("MD5");
+	    	} catch(Exception ex) {}
+	    	t3=new java.util.Date().getTime();
+	    	for(int j=0;j<1000000;++j) {
+	    		for(int i=0;i<testStrings.length;++i) {
+	//    			byte[]bytes=testStrings[i].getBytes();
+	    			String str=testStrings[i];
+	    			for(int k=0;k<str.length();++k)
+	    				buffer[i]=(byte)str.charAt(k);
+	    			md.digest(buffer,0,str.length()<32?32:str.length());
+	    		}
+	    	}
+        } catch(Exception ex) { LOG.info("FUCKED "+ex); }
+    	t4=new java.util.Date().getTime();
+    	LOG.info("Time for 4 million SHA: "+(t2-t1));
+    	LOG.info("Time for 4 million MD5: "+(t4-t3));
+    	return true;
+    }

@@ -17,6 +17,7 @@
  */
 package org.apache.hadoop.hbase.io.hfile;
 
+import java.io.FileNotFoundException;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryUsage;
 
@@ -26,6 +27,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.io.hfile.BlockType.BlockCategory;
+import org.apache.hadoop.hbase.io.hfile.flash.FlashCache;
 import org.apache.hadoop.hbase.regionserver.StoreFile;
 import org.apache.hadoop.hbase.util.DirectMemoryUtils;
 import org.apache.hadoop.util.StringUtils;
@@ -69,6 +71,20 @@ public class CacheConfig {
    */
   public static final String EVICT_BLOCKS_ON_CLOSE_KEY =
       "hbase.rs.evictblocksonclose";
+
+  /**
+   * Configuration keys for Flash victim caching - Flash file name and size
+   */
+  public static final String FLASH_CACHE_FILENAME_KEY=
+      "hbase.flashcache.filename";
+  public static final String FLASH_CACHE_FILESIZE_KEY=
+      "hbase.flashcache.filesize";
+  public static final String FLASH_CACHE_METADATANAME_KEY=
+	      "hbase.flashcache.metadataname";
+  public static final String FLASH_CACHE_WRITERS_KEY=
+	      "hbase.flashcache.writerThreads";
+  public static final String FLASH_CACHE_WRITER_QUEUE_KEY=
+	      "hbase.flashcache.writerQueueLength";
 
   // Defaults
 
@@ -343,8 +359,23 @@ public class CacheConfig {
     LOG.info("Allocating LruBlockCache with maximum size " +
       StringUtils.humanReadableInt(cacheSize));
     if (offHeapCacheSize <= 0) {
-      globalBlockCache = new LruBlockCache(cacheSize,
-          StoreFile.DEFAULT_BLOCKSIZE_SMALL);
+      LruBlockCache lbu=new LruBlockCache(cacheSize,
+              StoreFile.DEFAULT_BLOCKSIZE_SMALL);
+      String flashName=conf.get(FLASH_CACHE_FILENAME_KEY,null);
+      long flashSize=(long)(conf.getFloat(FLASH_CACHE_FILESIZE_KEY,0F));
+      if(flashName!=null&&flashSize>0) {
+    	int writerThreads=conf.getInt(FLASH_CACHE_WRITERS_KEY,8);
+    	int writerQueueLen=conf.getInt(FLASH_CACHE_WRITER_QUEUE_KEY,64);
+     	String metaName=conf.get(FLASH_CACHE_METADATANAME_KEY);
+    	try {
+    	  FlashCache fc=new FlashCache(flashName,flashSize*1024*1024,writerThreads,writerQueueLen,metaName);
+    	  lbu.setVictimCache(fc);
+    	  globalBlockCache=fc;
+    	} catch(java.io.IOException ioex) {
+    		LOG.error("Can't instantiate flash cache: Cache file can't be opened because of ",ioex);
+    	}
+      }
+      globalBlockCache = lbu;
     } else {
       globalBlockCache = new DoubleBlockCache(cacheSize, offHeapCacheSize,
           StoreFile.DEFAULT_BLOCKSIZE_SMALL, blockSize, conf);

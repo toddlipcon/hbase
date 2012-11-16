@@ -41,8 +41,8 @@ public class SchemaConfigured implements HeapSize, SchemaAware {
   private static final Log LOG = LogFactory.getLog(SchemaConfigured.class);
 
   // These are not final because we set them at runtime e.g. for HFile blocks.
-  private String cfName;
-  private String tableName;
+  public String cfName; // NAC HACK
+  public String tableName; // NAC HACK
 
   /**
    * Schema metrics. Can only be initialized when we know our column family
@@ -53,7 +53,7 @@ public class SchemaConfigured implements HeapSize, SchemaAware {
    * value of null, it will be re-initialized to the same value that other
    * threads see.
    */
-  private SchemaMetrics schemaMetrics;
+  public SchemaMetrics schemaMetrics;
 
   static {
     if (ClassSize.OBJECT <= 0 || ClassSize.REFERENCE <= 0) {

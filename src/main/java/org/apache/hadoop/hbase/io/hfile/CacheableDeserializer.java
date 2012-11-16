@@ -31,4 +31,9 @@ public interface CacheableDeserializer<T extends Cacheable> {
    * @return T the deserialized object.
    */
   public T deserialize(ByteBuffer b) throws IOException;
+
+  /* Added by NEIL FLASH
+   *
+   */
+  public int getDeserialiserIdentifier();
 }

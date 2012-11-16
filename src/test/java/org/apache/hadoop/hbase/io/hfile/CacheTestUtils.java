@@ -280,6 +280,9 @@ public class CacheTestUtils {
           b.get(buf);
           return new ByteArrayCacheable(buf);
         }
+        public int getDeserialiserIdentifier() {
+        	return 0x0000DEAD;
+        }
       };
     }
 

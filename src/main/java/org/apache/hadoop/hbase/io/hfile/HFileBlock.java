@@ -129,7 +129,8 @@ public class HFileBlock extends SchemaConfigured implements Cacheable {
       ByteBuffer.wrap(new byte[0], 0, 0).getClass(), false);
 
   static final int EXTRA_SERIALIZATION_SPACE = Bytes.SIZEOF_LONG +
-      Bytes.SIZEOF_INT;
+      Bytes.SIZEOF_INT+ // Added by NAC
+      Bytes.SIZEOF_INT+Bytes.SIZEOF_INT+Bytes.SIZEOF_INT+Bytes.SIZEOF_INT+Bytes.SIZEOF_INT;
 
   /**
    * Each checksum value is an integer that can be stored in 4 bytes.
@@ -139,11 +140,16 @@ public class HFileBlock extends SchemaConfigured implements Cacheable {
   private static final CacheableDeserializer<Cacheable> blockDeserializer =
       new CacheableDeserializer<Cacheable>() {
         public HFileBlock deserialize(ByteBuffer buf) throws IOException{
-          ByteBuffer newByteBuffer = ByteBuffer.allocate(buf.limit()
-              - HFileBlock.EXTRA_SERIALIZATION_SPACE);
+        	/* Neil NAC 7th November: Copying the whole buffer here to save a few bytes creates oodles
+        	 * of extra garbage and GC, as well as heap->heap copies having a surprisingly high CPU cost.
+        	 * So we just leave the buffer as is and slice it instead.
+        	 */
+          /*ByteBuffer newByteBuffer = ByteBuffer.allocate(buf.limit()
+              - HFileBlock.EXTRA_SERIALIZATION_SPACE);*/
           buf.limit(buf.limit()
               - HFileBlock.EXTRA_SERIALIZATION_SPACE).rewind();
-          newByteBuffer.put(buf);
+          ByteBuffer newByteBuffer=buf.slice();
+          //newByteBuffer.put(buf);
           HFileBlock ourBuffer = new HFileBlock(newByteBuffer, 
                                    MINOR_VERSION_NO_CHECKSUM);
 
@@ -151,10 +157,22 @@ public class HFileBlock extends SchemaConfigured implements Cacheable {
           buf.limit(buf.limit() + HFileBlock.EXTRA_SERIALIZATION_SPACE);
           ourBuffer.offset = buf.getLong();
           ourBuffer.nextBlockOnDiskSizeWithHeader = buf.getInt();
+          ourBuffer.includesMemstoreTS=(buf.getInt()==1);
+          ourBuffer.minorVersion=buf.getInt();
+          ourBuffer.bytesPerChecksum=buf.getInt();
+          ourBuffer.checksumType=(byte)buf.getInt();
+          ourBuffer.onDiskDataSizeWithHeader=buf.getInt();
           return ourBuffer;
+        }
+        public int getDeserialiserIdentifier() {
+        	return 1;
         }
       };
 
+  static { /* So we can get the deserializer reference back later on */
+ 	CacheableDeserializerFactory.registerDeserializer(blockDeserializer,1);
+  }
+      
   private BlockType blockType;
 
   /** Size on disk without the header. It includes checksum data too. */
@@ -167,16 +185,16 @@ public class HFileBlock extends SchemaConfigured implements Cacheable {
   private final long prevBlockOffset;
 
   /** The Type of checksum, better to store the byte than an object */
-  private final byte checksumType;
+  private byte checksumType;
 
   /** The number of bytes for which a checksum is computed */
-  private final int bytesPerChecksum;
+  private int bytesPerChecksum;
 
   /** Size on disk of header and data. Does not include checksum data */
-  private final int onDiskDataSizeWithHeader;
+  private int onDiskDataSizeWithHeader;
 
   /** The minor version of the hfile. */
-  private final int minorVersion;
+  private int minorVersion;
 
   /** The in-memory representation of the hfile block */
   private ByteBuffer buf;
@@ -368,6 +386,51 @@ public class HFileBlock extends SchemaConfigured implements Cacheable {
     dupBuf.rewind();
     return dupBuf;
   }
+
+    // Test routine to clone this and see if we can make things happy this way...
+    public HFileBlock cloneNACTODO() {
+        HFileBlock nfb=new HFileBlock(blockType,onDiskSizeWithoutHeader,
+        		uncompressedSizeWithoutHeader,prevBlockOffset,buf,
+        		false,offset,includesMemstoreTS,minorVersion,
+        		bytesPerChecksum,checksumType,onDiskDataSizeWithHeader);
+        //nfb.tableName=tableName;
+        //nfb.schemaMetrics=schemaMetrics;
+        //nfb.cfName=cfName;
+        return nfb;
+    }
+    
+    public void compareToNACTODO(org.apache.commons.logging.Log LOG,HFileBlock nfb) {
+    	if(nfb.blockType!=blockType)
+    		LOG.info("***FLASH: Block type different");
+    	if(nfb.onDiskSizeWithoutHeader!=onDiskSizeWithoutHeader)
+    		LOG.info("***FLASH: onDiskSizeWithoutHeader");
+    	if(nfb.uncompressedSizeWithoutHeader!=uncompressedSizeWithoutHeader)
+    		LOG.info("***FLASH: uncompressedSizeWithoutHeader different");
+    	if(nfb.prevBlockOffset!=prevBlockOffset)
+    		LOG.info("***FLASH: prevBlockOffset different");
+    	if(nfb.offset!=offset)
+    		LOG.info("***FLASH: offset different");
+    	if(!nfb.buf.equals(buf))
+    		LOG.info("***FLASH: buf different");
+    	if(nfb.includesMemstoreTS!=includesMemstoreTS)
+    		LOG.info("***FLASH: includesMemstoreTS different");
+    	if(nfb.minorVersion!=minorVersion)
+    		LOG.info("***FLASH: minorVersion different");
+    	if(nfb.bytesPerChecksum!=bytesPerChecksum)
+    		LOG.info("***FLASH: bytesPerChecksum different");
+    	if(nfb.checksumType!=checksumType)
+    		LOG.info("***FLASH: checksumType different");
+    	if(nfb.onDiskDataSizeWithHeader!=onDiskDataSizeWithHeader)
+    		LOG.info("***FLASH: onDiskDataSizeWithHeader different");
+    }
+    
+    public void fixupShitNACTODO(HFileBlock nfb) {
+    	includesMemstoreTS=nfb.includesMemstoreTS;
+    	minorVersion=nfb.minorVersion;
+    	bytesPerChecksum=nfb.bytesPerChecksum;
+    	checksumType=nfb.checksumType;
+    	//onDiskDataSizeWithHeader=nfb.onDiskDataSizeWithHeader;
+    }
 
   /**
    * Deserializes fields of the given writable using the data portion of this
@@ -1960,8 +2023,23 @@ public class HFileBlock extends SchemaConfigured implements Cacheable {
     destination.put(this.buf.duplicate());
     destination.putLong(this.offset);
     destination.putInt(this.nextBlockOnDiskSizeWithHeader);
+
+    // ADDED BY NAC TODO
+    destination.putInt(this.includesMemstoreTS?1:0);
+    destination.putInt(this.minorVersion);
+    destination.putInt(this.bytesPerChecksum);
+    destination.putInt((int)this.checksumType);
+    destination.putInt((int)this.onDiskDataSizeWithHeader);
+    //
     destination.rewind();
   }
+
+    // NAC: To implement:
+    //   getSerializedLengthForCache()
+    //   serializeForCache()
+    //   add CacheableDeserializer:getDeserializerForCache
+    // needs to include the following fields:
+    //       	includesMemstoreTS,minorVersion,bytesPerChecksum,checksumType
 
   @Override
   public CacheableDeserializer<Cacheable> getDeserializer() {
